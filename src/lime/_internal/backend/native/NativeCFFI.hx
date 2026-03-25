@@ -670,7 +670,7 @@ class NativeCFFI
 	private static var lime_deflate_compress = CFFI.load("lime", "lime_deflate_compress", 2);
 	private static var lime_deflate_decompress = CFFI.load("lime", "lime_deflate_decompress", 2);
 	private static var lime_drop_event_manager_register = CFFI.load("lime", "lime_drop_event_manager_register", 2);
-	private static var lime_file_dialog_open_directory = CFFI.load("lime", "lime_file_dialog_open_directory", 4);
+	private static var lime_file_dialog_open_directory = CFFI.load("lime", "lime_file_dialog_open_directory", 5);
 	private static var lime_file_dialog_open_file = CFFI.load("lime", "lime_file_dialog_open_file", -1);
 	private static var lime_file_dialog_save_file = CFFI.load("lime", "lime_file_dialog_save_file", -1);
 	private static var lime_file_watcher_create = CFFI.load("lime", "lime_file_watcher_create", 1);

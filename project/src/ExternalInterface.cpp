@@ -786,10 +786,11 @@ namespace lime {
 
 		#ifdef LIME_SDL
 		Window* targetWindow = window ? (Window*)val_data (window) : nullptr;
-
+		const char* targetTitle = hxs_utf8 (title, nullptr);
 		ValuePointer* targetCallback = new ValuePointer (callback);
+		const char* targetDefaultPath = hxs_utf8 (defaultPath, nullptr);
 
-		FileDialog::OpenDirectory (targetWindow, hxs_utf8 (title, nullptr), [targetCallback](const char* const* filelist, int filecount, int filter)
+		FileDialog::OpenDirectory (targetWindow, targetTitle, [targetCallback](const char* const* filelist, int filecount, int filter)
 		{
 			if (targetCallback) {
 
@@ -805,7 +806,7 @@ namespace lime {
 
 				delete targetCallback;
 			}
-		}, hxs_utf8 (defaultPath, nullptr), allowMultiple);
+		}, targetDefaultPath, allowMultiple);
 		#endif
 
 	}
@@ -815,10 +816,11 @@ namespace lime {
 
 		#ifdef LIME_SDL
 		Window* targetWindow = window ? (Window*)window->ptr : nullptr;
-
+		const char* targetTitle = title ? (char*)hl_to_utf8 ((const uchar*)title->bytes) : nullptr;
 		ValuePointer* targetCallback = new ValuePointer (callback);
+		const char* targetDefaultPath = defaultPath ? (char*)hl_to_utf8 ((const uchar*)defaultPath->bytes) : nullptr;
 
-		FileDialog::OpenDirectory (targetWindow, (char*)hl_to_utf8 ((const uchar*)title->bytes), [targetCallback](const char* const* filelist, int filecount, int filter)
+		FileDialog::OpenDirectory (targetWindow, targetTitle, [targetCallback](const char* const* filelist, int filecount, int filter)
 		{
 			if (targetCallback) {
 
@@ -836,7 +838,7 @@ namespace lime {
 				delete targetCallback;
 
 			}
-		}, (char*)hl_to_utf8 ((const uchar*)defaultPath->bytes), allowMultiple);
+		}, targetDefaultPath, allowMultiple);
 		#endif
 
 	}
@@ -846,8 +848,9 @@ namespace lime {
 
 		#ifdef LIME_SDL
 		Window* targetWindow = window ? (Window*)val_data (window) : nullptr;
-
+		const char* targetTitle = hxs_utf8 (title, nullptr);
 		ValuePointer* targetCallback = new ValuePointer (callback);
+		const char* targetDefaultPath = hxs_utf8 (defaultPath, nullptr);
 
 		int targetCount = 0;
 
@@ -870,7 +873,7 @@ namespace lime {
 
 		}
 
-		FileDialog::OpenFile (targetWindow, hxs_utf8 (title, nullptr), [targetCallback](const char* const* filelist, int filecount, int filter)
+		FileDialog::OpenFile (targetWindow, targetTitle, [targetCallback](const char* const* filelist, int filecount, int filter)
 		{
 			if (targetCallback) {
 
@@ -887,7 +890,7 @@ namespace lime {
 				delete targetCallback;
 
 			}
-		}, targetNames.data(), targetPatterns.data(), targetCount, hxs_utf8 (defaultPath, nullptr), allowMultiple);
+		}, targetNames.data(), targetPatterns.data(), targetCount, targetDefaultPath, allowMultiple);
 		#endif
 
 	}
@@ -897,8 +900,9 @@ namespace lime {
 
 		#ifdef LIME_SDL
 		Window* targetWindow = window ? (Window*)window->ptr : nullptr;
-
+		const char* targetTitle = title ? (char*)hl_to_utf8 ((const uchar*)title->bytes) : nullptr;
 		ValuePointer* targetCallback = new ValuePointer (callback);
+		const char* targetDefaultPath = defaultPath ? (char*)hl_to_utf8 ((const uchar*)defaultPath->bytes) : nullptr;
 
 		int targetCount = 0;
 
@@ -924,7 +928,7 @@ namespace lime {
 
 		}
 
-		FileDialog::OpenFile (targetWindow, (char*)hl_to_utf8 ((const uchar*)title->bytes), [targetCallback](const char* const* filelist, int filecount, int filter)
+		FileDialog::OpenFile (targetWindow, targetTitle, [targetCallback](const char* const* filelist, int filecount, int filter)
 		{
 			if (targetCallback) {
 
@@ -945,7 +949,7 @@ namespace lime {
 				delete targetCallback;
 
 			}
-		}, targetNames.data(), targetPatterns.data(), targetCount, (char*)hl_to_utf8 ((const uchar*)defaultPath->bytes));
+		}, targetNames.data(), targetPatterns.data(), targetCount, targetDefaultPath);
 		#endif
 
 	}
@@ -955,8 +959,9 @@ namespace lime {
 
 		#ifdef LIME_SDL
 		Window* targetWindow = window ? (Window*)val_data (window) : nullptr;
-
+		const char* targetTitle = hxs_utf8 (title, nullptr);
 		ValuePointer* targetCallback = new ValuePointer (callback);
+		const char* targetDefaultPath = hxs_utf8 (defaultPath, nullptr);
 
 		int targetCount = 0;
 
@@ -979,7 +984,7 @@ namespace lime {
 
 		}
 
-		FileDialog::SaveFile (targetWindow, hxs_utf8 (title, nullptr), [targetCallback](const char* const* filelist, int filecount, int filter)
+		FileDialog::SaveFile (targetWindow, targetTitle, [targetCallback](const char* const* filelist, int filecount, int filter)
 		{
 			if (targetCallback) {
 
@@ -988,7 +993,7 @@ namespace lime {
 				delete targetCallback;
 
 			}
-		}, targetNames.data(), targetPatterns.data(), targetCount, hxs_utf8 (defaultPath, nullptr));
+		}, targetNames.data(), targetPatterns.data(), targetCount, targetDefaultPath);
 		#endif
 
 	}
@@ -998,8 +1003,9 @@ namespace lime {
 
 		#ifdef LIME_SDL
 		Window* targetWindow = window ? (Window*)window->ptr : nullptr;
-
+		const char* targetTitle = title ? (char*)hl_to_utf8 ((const uchar*)title->bytes) : nullptr;
 		ValuePointer* targetCallback = new ValuePointer (callback);
+		const char* targetDefaultPath = defaultPath ? (char*)hl_to_utf8 ((const uchar*)defaultPath->bytes) : nullptr;
 
 		int targetCount = 0;
 
@@ -1025,7 +1031,7 @@ namespace lime {
 
 		}
 
-		FileDialog::SaveFile (targetWindow, (char*)hl_to_utf8 ((const uchar*)title->bytes), [targetCallback](const char* const* filelist, int filecount, int filter)
+		FileDialog::SaveFile (targetWindow, targetTitle, [targetCallback](const char* const* filelist, int filecount, int filter)
 		{
 			if (targetCallback) {
 
@@ -1040,7 +1046,7 @@ namespace lime {
 				delete targetCallback;
 
 			}
-		}, targetNames.data(), targetPatterns.data(), targetCount, (char*)hl_to_utf8 ((const uchar*)defaultPath->bytes));
+		}, targetNames.data(), targetPatterns.data(), targetCount, targetDefaultPath);
 		#endif
 
 	}
