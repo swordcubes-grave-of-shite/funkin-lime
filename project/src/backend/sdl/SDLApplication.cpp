@@ -1,6 +1,8 @@
 #include "SDLApplication.h"
 #include "SDLGamepad.h"
 #include "SDLJoystick.h"
+#include <SDL3/SDL_stdinc.h>
+#include <SDL3/SDL_timer.h>
 #include <system/System.h>
 
 #ifdef HX_MACOS
@@ -786,6 +788,18 @@ namespace lime {
 	}
 
 
+	void SDLApplication::PushUpdate() {
+		if (!inBackground) {
+			applicationEvent.type = UPDATE;
+			applicationEvent.deltaTime = std::fmax (0.0, (double)(frameTime.current - frameTime.previous) / 1e6); // Use the duration of the *previous frame* for deltaTime
+			ApplicationEvent::Dispatch (&applicationEvent);
+
+			renderEvent.type = RENDER;
+			RenderEvent::Dispatch (&renderEvent);
+		}
+	}
+
+
 	bool SDLApplication::Update () {
 
 		SDL_Event event;
@@ -798,36 +812,31 @@ namespace lime {
 				return active;
 
 		}
-
-		if (!inBackground) {
-
-			applicationEvent.type = UPDATE;
-			applicationEvent.deltaTime = std::fmax (0.0, (double)frameTime.frame / 1e6); // Use the duration of the *previous frame* for deltaTime
-			ApplicationEvent::Dispatch (&applicationEvent);
-
-			renderEvent.type = RENDER;
-			RenderEvent::Dispatch (&renderEvent);
-
-		}
-
-		// Measure the total duration of the current frame (update + render)
-		frameTime.current = SDL_GetTicksNS ();
-		frameTime.frame = frameTime.current - frameTime.previous;
 		frameTime.previous = frameTime.current;
+		frameTime.current = SDL_GetTicksNS();
 
-		// If the frame was faster than the target frame time, delay to cap FPS
-		if (frameTime.frame < frameTime.target) {
+		Uint64 dt = frameTime.current - frameTime.previous;
+		Uint64 dtLimit = frameTime.target * 4;
 
-			// Pause for the remaining time to maintain a consistent frame rate
-			SDL_DelayPrecise (frameTime.target - frameTime.frame);
+		if(dt > dtLimit)
+			dt = dtLimit;
 
-			// Measure the actual time spent waiting and add it to frameTime
-			frameTime.current = SDL_GetTicksNS ();
-			frameTime.frame += frameTime.current - frameTime.previous;
-			frameTime.previous = frameTime.current;
+		if(frameTime.target <= 0) {
+			// Go as fast as possible
+			frameTime.frame = 0;
+			PushUpdate();
+		} else {
+			// Cap to target framerate
+			frameTime.frame += dt;
+			while(frameTime.frame >= frameTime.target) {
+				PushUpdate();
+				frameTime.frame -= frameTime.target;
+			}
+			if(frameTime.frame < 0) frameTime.frame = 0; // make sure it doesn't go negative, will cause a freeze otherwise
 
+			Uint64 sleepDuration = frameTime.target - frameTime.frame;
+			SDL_DelayPrecise(sleepDuration - 1000000);
 		}
-
 		return active;
 
 	}
