@@ -791,7 +791,7 @@ namespace lime {
 	void SDLApplication::PushUpdate() {
 		if (!inBackground) {
 			applicationEvent.type = UPDATE;
-			applicationEvent.deltaTime = std::fmax (0.0, (double)(frameTime.current - frameTime.previous) / 1e6); // Use the duration of the *previous frame* for deltaTime
+			applicationEvent.deltaTime = std::fmax(0.0, (double)frameTime.frame / 1e6); // Use the duration of the *previous frame* for deltaTime
 			ApplicationEvent::Dispatch (&applicationEvent);
 
 			renderEvent.type = RENDER;
@@ -801,41 +801,30 @@ namespace lime {
 
 
 	bool SDLApplication::Update () {
-
 		SDL_Event event;
 
 		while (SDL_PollEvent (&event)) {
-
 			HandleEvent (&event);
 
 			if (!active)
 				return active;
-
 		}
-		frameTime.previous = frameTime.current;
+		PushUpdate();
+
+		// Measure the total duration of the current frame (update + render)
 		frameTime.current = SDL_GetTicksNS();
+		frameTime.frame = frameTime.current - frameTime.previous;
+		frameTime.previous = frameTime.current;
 
-		Uint64 dt = frameTime.current - frameTime.previous;
-		Uint64 dtLimit = frameTime.target * 4;
+		// If the frame was faster than the target frame time, delay to cap FPS
+		if(frameTime.frame < frameTime.target) {
+			// Pause for the remaining time to maintain a consistent frame rate
+			SDL_DelayPrecise(frameTime.target - frameTime.frame);
 
-		if(dt > dtLimit)
-			dt = dtLimit;
-
-		if(frameTime.target <= 0) {
-			// Go as fast as possible
-			frameTime.frame = 0;
-			PushUpdate();
-		} else {
-			// Cap to target framerate
-			frameTime.frame += dt;
-			while(frameTime.frame >= frameTime.target) {
-				PushUpdate();
-				frameTime.frame -= frameTime.target;
-			}
-			if(frameTime.frame < 0) frameTime.frame = 0; // make sure it doesn't go negative, will cause a freeze otherwise
-
-			Uint64 sleepDuration = frameTime.target - frameTime.frame;
-			SDL_DelayPrecise(sleepDuration - 1000000);
+			// Measure the actual time spent waiting and add it to frameTime
+			frameTime.current = SDL_GetTicksNS();
+			frameTime.frame += frameTime.current - frameTime.previous;
+			frameTime.previous = frameTime.current;
 		}
 		return active;
 
