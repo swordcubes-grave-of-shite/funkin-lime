@@ -13,6 +13,7 @@ namespace lime {
 
 		SENSOR_ACCELEROMETER,
 		SENSOR_GYROSCOPE
+		
 	};
 
 

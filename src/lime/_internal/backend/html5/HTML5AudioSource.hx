@@ -1,5 +1,6 @@
 package lime._internal.backend.html5;
 
+import lime.media.AudioManager;
 import lime.math.Vector4;
 import lime.media.AudioSource;
 
@@ -26,7 +27,23 @@ class HTML5AudioSource
 
 	public function dispose():Void {}
 
-	public function init():Void {}
+	public function init():Void
+	{
+		#if lime_howlerjs
+		// Initialize the panner with default values
+		parent.buffer.src.pannerAttr(
+			{
+				coneInnerAngle: 360,
+				coneOuterAngle: 360,
+				coneOuterGain: 0,
+				distanceModel: "inverse",
+				maxDistance: 10000,
+				refDistance: 1,
+				rolloffFactor: 1,
+				panningModel: "equalpower" // Default to equalpower for better performance
+			});
+		#end
+	}
 
 	public function play():Void
 	{
@@ -222,7 +239,6 @@ class HTML5AudioSource
 		return getPitch();
 	}
 
-
 	public function getPosition():Vector4
 	{
 		#if lime_howlerjs
@@ -251,5 +267,19 @@ class HTML5AudioSource
 		#end
 
 		return position;
+	}
+
+	public function getLatency():Float
+	{
+		var ctx = AudioManager.context.web;
+		if (ctx != null)
+		{
+			var baseLatency:Float = untyped ctx.baseLatency != null ? untyped ctx.baseLatency : 0;
+			var outputLatency:Float = untyped ctx.outputLatency != null ? untyped ctx.outputLatency : 0;
+
+			return (baseLatency + outputLatency) * 1000;
+		}
+
+		return 0;
 	}
 }

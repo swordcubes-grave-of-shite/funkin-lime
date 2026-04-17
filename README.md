@@ -5,7 +5,7 @@ Lime
 
 Lime is a flexible, lightweight layer for Haxe cross-platform developers.
 
-Lime supports native, Flash and HTML5 targets with unified support for:
+Lime supports native and HTML5 targets with unified support for:
 
  * Windowing
  * Input
@@ -20,7 +20,6 @@ Lime does not include a renderer, but exposes the current context:
  * Cairo
  * Canvas
  * DOM
- * Flash
  * GL
 
 The GL context is based upon the WebGL standard, implemented for both OpenGL and OpenGL ES as needed.
@@ -85,7 +84,7 @@ You can build a sample Lime project with the following commands:
 
     lime create HelloWorld
     cd HelloWorld
-    lime test neko
+    lime test windows
 
 You can also list other projects that are available using "lime create".
 
@@ -101,9 +100,15 @@ Lime currently supports the following targets:
     lime test android
     lime test ios
     lime test html5
-    lime test flash
-    lime test air
-    lime test neko
     lime test hl
 
 Desktop builds are currently designed to be built on the same host OS
+
+
+Join the Community
+==================
+
+Have a question? Want a new place to hang out?
+
+ * [Forums](https://community.openfl.org/c/lime/19)
+ * [Discord](https://discordapp.com/invite/tDgq8EE)

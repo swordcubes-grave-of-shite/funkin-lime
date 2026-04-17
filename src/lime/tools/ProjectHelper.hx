@@ -3,9 +3,7 @@ package lime.tools;
 import hxp.*;
 import sys.io.File;
 import sys.FileSystem;
-#if neko
-import neko.Lib;
-#elseif cpp
+#if cpp
 import cpp.Lib;
 #end
 
@@ -80,13 +78,13 @@ class ProjectHelper
 	public static function recursiveSmartCopyTemplate(project:HXProject, source:String, destination:String, context:Dynamic = null, process:Bool = true,
 			warnIfNotFound:Bool = true)
 	{
-		var destinations = [];
+		var destinations:Array<String> = [];
 		var paths = System.findTemplateRecursive(project.templatePaths, source, warnIfNotFound, destinations);
 
 		if (paths != null)
 		{
 			System.mkdir(destination);
-			var itemDestination;
+			var itemDestination:String;
 
 			for (i in 0...paths.length)
 			{
@@ -101,15 +99,19 @@ class ProjectHelper
 	{
 		if (!FileSystem.exists(source))
 		{
-			if (warnIfNotFound)	Log.warn("Could not find directory: " + source);
+			if (warnIfNotFound)
+			{
+				Log.warn("Could not find directory: " + source);
+			}
+
 			return;
 		}
 
 		for (item in FileSystem.readDirectory(source))
 		{
-      var nextItemPath = Path.combine(itemPath, item);
-      var itemSource = Path.combine(source, item);
-      var itemDestination = Path.combine(destination, item);
+			var nextItemPath = Path.combine(itemPath, item);
+			var itemSource = Path.combine(source, item);
+			var itemDestination = Path.combine(destination, item);
 
 			if (FileSystem.isDirectory(itemSource))
 			{
@@ -117,7 +119,7 @@ class ProjectHelper
 			}
 			else
 			{
-		    FileSystem.createDirectory(Path.directory(itemDestination));
+				FileSystem.createDirectory(Path.directory(itemDestination));
 				System.copyFile(itemSource, itemDestination, context, process);
 			}
 		}
@@ -147,7 +149,8 @@ class ProjectHelper
 		else
 		{
 			var substring = StringTools.replace(string, " ", "");
-			var index, value;
+			var index:Int;
+			var value:String;
 
 			if (substring.indexOf("==") > -1)
 			{

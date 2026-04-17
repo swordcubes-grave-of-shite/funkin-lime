@@ -9,14 +9,6 @@ import lime.ui.WindowAttributes;
 import lime.utils.ArrayBuffer;
 import lime.utils.UInt8Array;
 import lime.utils.UInt16Array;
-#if flash
-import flash.net.URLRequest;
-import flash.system.Capabilities;
-import flash.Lib;
-#end
-#if air
-import flash.desktop.NativeApplication;
-#end
 #if ((js && html5) || electron)
 import js.html.Element;
 import js.Browser;
@@ -207,7 +199,8 @@ class System
 	public static function exit(code:Int):Void
 	{
 		var currentApp = Application.current;
-		#if ((sys || (js && html5) || air) && !macro)
+
+		#if ((sys || (js && html5)) && !macro)
 		if (currentApp != null)
 		{
 			currentApp.onExit.dispatch(code);
@@ -226,8 +219,6 @@ class System
 		{
 			currentApp.window.close();
 		}
-		#elseif air
-		NativeApplication.nativeApplication.exit(code);
 		#end
 	}
 	#end
@@ -259,6 +250,8 @@ class System
 			display.id = id;
 			display.name = CFFI.stringValue(displayInfo.name);
 			display.bounds = new Rectangle(displayInfo.bounds.x, displayInfo.bounds.y, displayInfo.bounds.width, displayInfo.bounds.height);
+			display.orientation = displayInfo.orientation;
+			display.safeArea = new Rectangle(displayInfo.safeArea.x, displayInfo.safeArea.y, displayInfo.safeArea.width, displayInfo.safeArea.height);
 			display.dpi = displayInfo.dpi;
 			display.supportedModes = [];
 
@@ -294,29 +287,39 @@ class System
 
 			return display;
 		}
-		#elseif (flash || html5)
+		#elseif (js && html5)
 		if (id == 0)
 		{
 			var display = new Display();
 			display.id = 0;
 			display.name = "Generic Display";
-
-			#if flash
-			display.dpi = Capabilities.screenDPI;
-			display.currentMode = new DisplayMode(Std.int(Capabilities.screenResolutionX), Std.int(Capabilities.screenResolutionY), 60, ARGB32);
-			#elseif (js && html5)
-			// var div = Browser.document.createElement ("div");
-			// div.style.width = "1in";
-			// Browser.document.body.appendChild (div);
-			// var ppi = Browser.document.defaultView.getComputedStyle (div, null).getPropertyValue ("width");
-			// Browser.document.body.removeChild (div);
-			// display.dpi = Std.parseFloat (ppi);
 			display.dpi = 96 * Browser.window.devicePixelRatio;
 			display.currentMode = new DisplayMode(Browser.window.screen.width, Browser.window.screen.height, 60, ARGB32);
-			#end
+
+			if (Browser.window.screen.orientation != null)
+			{
+				switch (Browser.window.screen.orientation.type)
+				{
+					case PORTRAIT_PRIMARY:
+						display.orientation = PORTRAIT;
+					case PORTRAIT_SECONDARY:
+						display.orientation = PORTRAIT_FLIPPED;
+					case LANDSCAPE_PRIMARY:
+						display.orientation = LANDSCAPE;
+					case LANDSCAPE_SECONDARY:
+						display.orientation = LANDSCAPE_FLIPPED;
+					default:
+						display.orientation = UNKNOWN;
+				}
+			}
+			else
+			{
+				display.orientation = UNKNOWN;
+			}
 
 			display.supportedModes = [display.currentMode];
 			display.bounds = new Rectangle(0, 0, display.currentMode.width, display.currentMode.height);
+			display.safeArea = new Rectangle(0, 0, display.currentMode.width, display.currentMode.height);
 			return display;
 		}
 		#end
@@ -327,11 +330,9 @@ class System
 	/**
 		The number of milliseconds since the application was initialized.
 	**/
-	public static function getTimer():#if flash Int #else Float #end
+	public static function getTimer():Float
 	{
-		#if flash
-		return flash.Lib.getTimer();
-		#elseif ((js && !nodejs) || electron)
+		#if (js || electron)
 		return Browser.window.performance.now();
 		#elseif (lime_cffi && !macro && !neko)
 		return NativeCFFI.lime_system_get_timer() / 1e+6;
@@ -356,7 +357,7 @@ class System
 	#end
 
 	/**
-		Opens a file with the suste, default application.
+		Opens a file with the system default application.
 
 		In a web browser, opens a URL with target `_blank`.
 	**/
@@ -372,8 +373,6 @@ class System
 			Sys.command("/usr/bin/xdg-open", [path]);
 			#elseif (js && html5)
 			Browser.window.open(path, "_blank");
-			#elseif flash
-			Lib.getURL(new URLRequest(path), "_blank");
 			#elseif (lime_cffi && !macro)
 			NativeCFFI.lime_system_open_file(path);
 			#end
@@ -391,8 +390,6 @@ class System
 			openFile(url);
 			#elseif (js && html5)
 			Browser.window.open(url, target);
-			#elseif flash
-			Lib.getURL(new URLRequest(url), target);
 			#elseif (lime_cffi && !macro)
 			NativeCFFI.lime_system_open_url(url, target);
 			#end
@@ -483,20 +480,6 @@ class System
 
 			__directories.set(type, path);
 			return path;
-		}
-		#elseif flash
-		if (type != FONTS && Capabilities.playerType == "Desktop")
-		{
-			var propertyName = switch (type)
-			{
-				case APPLICATION: "applicationDirectory";
-				case APPLICATION_STORAGE: "applicationStorageDirectory";
-				case DESKTOP: "desktopDirectory";
-				case DOCUMENTS: "documentsDirectory";
-				default: "userDirectory";
-			}
-
-			return Reflect.getProperty(Type.resolveClass("flash.filesystem.File"), propertyName).nativePath;
 		}
 		#end
 
@@ -753,7 +736,7 @@ class System
 	{
 		if (__endianness == null)
 		{
-			#if (ps3 || wiiu || flash)
+			#if (ps3 || wiiu)
 			__endianness = BIG_ENDIAN;
 			#else
 			var arrayBuffer = new ArrayBuffer(2);
@@ -823,22 +806,8 @@ class System
 			__platformName = "iOS";
 			#elseif android
 			__platformName = "Android";
-			#elseif air
-			__platformName = "AIR";
-			#elseif flash
-			__platformName = "Flash Player";
 			#elseif tvos
 			__platformName = "tvOS";
-			#elseif tizen
-			__platformName = "Tizen";
-			#elseif blackberry
-			__platformName = "BlackBerry";
-			#elseif firefox
-			__platformName = "Firefox";
-			#elseif webos
-			__platformName = "webOS";
-			#elseif nodejs
-			__platformName = "Node.js";
 			#elseif js
 			__platformName = "HTML5";
 			#end
@@ -863,8 +832,6 @@ class System
 			__platformVersion = __runProcess("sw_vers", ["-productVersion"]);
 			#elseif linux
 			__platformVersion = __runProcess("lsb_release", ["-rs"]);
-			#elseif flash
-			__platformVersion = Capabilities.version;
 			#end
 		}
 
@@ -882,16 +849,7 @@ class System
 	}
 }
 
-#if (haxe_ver >= 4.0) enum #else @:enum #end abstract DisplayOrientation(Int) from Int to Int from UInt to UInt
-{
-	var DISPLAY_ORIENTATION_UNKNOWN = 0;
-	var DISPLAY_ORIENTATION_LANDSCAPE = 1;
-	var DISPLAY_ORIENTATION_LANDSCAPE_FLIPPED = 2;
-	var DISPLAY_ORIENTATION_PORTRAIT = 3;
-	var DISPLAY_ORIENTATION_PORTRAIT_FLIPPED = 4;
-}
-
-#if (haxe_ver >= 4.0) private enum #else @:enum private #end abstract SystemDirectory(Int) from Int to Int from UInt to UInt
+private enum abstract SystemDirectory(Int) from Int to Int from UInt to UInt
 {
 	var APPLICATION = 0;
 	var APPLICATION_STORAGE = 1;

@@ -203,7 +203,8 @@ class AL
 	public static inline var EFFECT_VOCAL_MORPHER:Int = 0x0007;
 	public static inline var EFFECT_PITCH_SHIFTER:Int = 0x0008;
 	public static inline var EFFECT_RING_MODULATOR:Int = 0x0009;
-	public static inline var FFECT_AUTOWAH:Int = 0x000A;
+	public static inline var FFECT_AUTOWAH:Int = 0x000A; // TODO: deprecate and remove
+	public static inline var EFFECT_AUTOWAH:Int = 0x000A;
 	public static inline var EFFECT_COMPRESSOR:Int = 0x000B;
 	public static inline var EFFECT_EQUALIZER:Int = 0x000C;
 	/* Auxiliary Effect Slot properties. */
@@ -232,20 +233,18 @@ class AL
 	public static inline var FILTER_LOWPASS:Int = 0x0001;
 	public static inline var FILTER_HIGHPASS:Int = 0x0002;
 	public static inline var FILTER_BANDPASS:Int = 0x0003;
+	#if lime_openalsoft
 	/* AL_SOFT_direct_channels extension */
 	public static inline var DIRECT_CHANNELS_SOFT:Int = 0x1033;
 	/* AL_SOFT_direct_channels_remix extension */
 	public static inline var DROP_UNMATCHED_SOFT:Int = 0x0001;
 	public static inline var REMIX_UNMATCHED_SOFT:Int = 0x0002;
-
+	/* AL_SOFT_source_latency extension */
+	public static inline var SAMPLE_OFFSET_LATENCY_SOFT = 0x1200;
+	public static inline var SEC_OFFSET_LATENCY_SOFT = 0x1201;
+	/* AL_SOFT_hold_on_disconnect */
 	public static inline var STOP_SOURCES_ON_DISCONNECT_SOFT:Int = 0x19AB;
-
-	public static inline var DEVICE_CLOCK_SOFT:Int = 0x1600;
-	public static inline var DEVICE_LATENCY_SOFT:Int = 0x1601;
-	public static inline var DEVICE_CLOCK_LATENCY_SOFT:Int = 0x1602;
-
-	public static inline var SEC_OFFSET_LATENCY_SOFT:Int = 0x1201;
-	public static inline var SEC_OFFSET_CLOCK_SOFT:Int = 0x1203;
+	#end
 
 	public static function removeDirectFilter(source:ALSource)
 	{
@@ -968,6 +967,24 @@ class AL
 	{
 		#if (lime_cffi && lime_openal && !macro)
 		var result = NativeCFFI.lime_al_get_sourcefv(source, param, count);
+		#if hl
+		if (result == null) return [];
+		var _result:Array<Float> = [];
+		for (i in 0...result.length)
+			_result[i] = result[i];
+		return _result;
+		#else
+		return result;
+		#end
+		#else
+		return null;
+		#end
+	}
+
+	public static function getSourcedvSOFT(source:ALSource, param:Int, count:Int = 1):Array<Float>
+	{
+		#if (lime_cffi && lime_openalsoft && !macro)
+		var result = NativeCFFI.lime_al_get_sourcedv_soft(source, param, count);
 		#if hl
 		if (result == null) return [];
 		var _result:Array<Float> = [];

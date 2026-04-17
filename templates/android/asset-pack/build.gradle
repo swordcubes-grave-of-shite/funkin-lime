@@ -1,10 +1,10 @@
 plugins {
-    id 'com.android.asset-pack'
+	id 'com.android.asset-pack'
 }
 
 assetPack {
-    packName = "::ANDROID_PLAY_ASSETS_DELIVERY_PACK::"
-    dynamicDelivery {
-        deliveryType = "install-time"
-    }
+	packName = "::ANDROID_PLAY_ASSETS_DELIVERY_PACK::"
+	dynamicDelivery {
+		deliveryType = "install-time"
+	}
 }

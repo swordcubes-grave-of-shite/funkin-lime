@@ -53,18 +53,17 @@ class HTML5Platform extends PlatformTarget
 				file: "MyApplication",
 				path: "bin",
 				preloader: "",
-				swfVersion: 17,
 				url: "",
 				init: null
 			};
 
 		defaults.window =
 			{
-				width: 800,
-				height: 600,
+				width: 0,
+				height: 0,
 				parameters: "{}",
 				background: 0xFFFFFF,
-				fps: 30,
+				fps: 60,
 				hardware: true,
 				display: 0,
 				resizable: true,
@@ -86,10 +85,6 @@ class HTML5Platform extends PlatformTarget
 				hidden: false,
 				title: ""
 			};
-
-		defaults.window.width = 0;
-		defaults.window.height = 0;
-		defaults.window.fps = 60;
 
 		for (i in 1...project.windows.length)
 		{
@@ -178,14 +173,6 @@ class HTML5Platform extends PlatformTarget
 		}
 	}
 
-	public override function clean():Void
-	{
-		if (FileSystem.exists(targetDirectory))
-		{
-			System.removeDirectory(targetDirectory);
-		}
-	}
-
 	public override function deploy():Void
 	{
 		var name = "HTML5";
@@ -210,7 +197,7 @@ class HTML5Platform extends PlatformTarget
 		}
 	}
 
-	private function getDisplayHXML():HXML
+	private override function getDisplayHXML():HXML
 	{
 		var path = targetDirectory + "/haxe/" + buildType + ".hxml";
 
@@ -286,7 +273,15 @@ class HTML5Platform extends PlatformTarget
 	{
 		AssetHelper.processLibraries(project, targetDirectory);
 
-		// project = project.clone ();
+		if (project.targetFlags.exists("xml"))
+		{
+			project.haxeflags.push("--xml " + targetDirectory + "/types.xml");
+		}
+
+		if (project.targetFlags.exists("json"))
+		{
+			project.haxeflags.push("--json " + targetDirectory + "/types.json");
+		}
 
 		var destination = targetDirectory + "/bin/";
 		if (npm) destination += "dist/";
@@ -303,7 +298,7 @@ class HTML5Platform extends PlatformTarget
 			}
 		}
 
-		var fontPath;
+		var fontPath:String;
 
 		for (asset in project.assets)
 		{
@@ -349,11 +344,6 @@ class HTML5Platform extends PlatformTarget
 			}
 		}
 
-		if (project.targetFlags.exists("xml"))
-		{
-			project.haxeflags.push("-xml " + targetDirectory + "/types.xml");
-		}
-
 		if (Log.verbose)
 		{
 			project.haxedefs.set("verbose", 1);
@@ -373,7 +363,7 @@ class HTML5Platform extends PlatformTarget
 
 		if (npm)
 		{
-			var path;
+			var path:String;
 			for (i in 0...project.sources.length)
 			{
 				path = project.sources[i];
@@ -445,7 +435,7 @@ class HTML5Platform extends PlatformTarget
 		}
 
 		var createdDirectories = new Map<String, Bool>();
-		var dir = null;
+		var dir:String = null;
 
 		for (asset in project.assets)
 		{
@@ -471,7 +461,7 @@ class HTML5Platform extends PlatformTarget
 
 					var hasFormat = [false, false, false, false];
 					var extensions = [ext, ".eot", ".svg", ".woff"];
-					var extension;
+					var extension:String;
 
 					for (i in 0...extensions.length)
 					{
@@ -509,7 +499,7 @@ class HTML5Platform extends PlatformTarget
 
 							if (shouldEmbedFont)
 							{
-								var urls = [];
+								var urls:Array<String> = [];
 								if (hasFormat[1]) urls.push("url('" + embeddedAsset.targetPath + ".eot?#iefix') format('embedded-opentype')");
 								if (hasFormat[3]) urls.push("url('" + embeddedAsset.targetPath + ".woff') format('woff')");
 								urls.push("url('" + embeddedAsset.targetPath + ext + "') format('truetype')");
@@ -579,24 +569,14 @@ class HTML5Platform extends PlatformTarget
 	{
 		// TODO: Use a custom live reload HTTP server for test/run instead
 
-		var hxml = getDisplayHXML();
-		var dirs = hxml.getClassPaths(true);
-
-		var outputPath = Path.combine(Sys.getCwd(), project.app.path);
-		dirs = dirs.filter(function(dir)
-		{
-			return (!Path.startsWith(dir, outputPath));
-		});
-
-		var command = ProjectHelper.getCurrentCommand();
-		System.watch(command, dirs);
+		super.watch();
 	}
 
-	@ignore public override function install():Void {}
+	public override function install():Void {}
 
-	@ignore public override function rebuild():Void {}
+	public override function rebuild():Void {}
 
-	@ignore public override function trace():Void {}
+	public override function trace():Void {}
 
-	@ignore public override function uninstall():Void {}
+	public override function uninstall():Void {}
 }

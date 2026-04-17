@@ -7,34 +7,29 @@
 
 	<set name="lime" />
 
-	<define name="native" if="cpp || neko || nodejs || cs || java || hl" />
+	<define name="native" if="cpp || hl" />
 	<define name="howlerjs" if="html5" />
 
 	<define name="lime-cairo" if="native" />
 	<define name="lime-canvas" if="html5" />
 	<define name="lime-cffi" if="native" />
-	<define name="lime-curl" unless="lime-console || lime-switch || emscripten || flash || html5" />
+	<define name="lime-curl" unless="lime-console || lime-switch || emscripten || html5" />
 	<define name="lime-dom" if="html5" />
 	<define name="lime-harfbuzz" if="native" />
 	<define name="lime-howlerjs" if="html5" />
 	<define name="lime-html5" if="html5" />
 	<define name="lime-native" if="native" />
-	<define name="lime-openal" unless="lime-console || flash || html5" />
+	<define name="lime-openalsoft" if="windows || linux || mac || android || ios || tvos" />
+	<define name="lime-openal" if="emscripten || lime-openalsoft" />
 	<define name="lime-opengl" if="desktop" unless="html5" />
 	<define name="lime-opengles" if="emscripten || mobile" />
 	<define name="lime-vorbis" if="native" />
 	<define name="lime-webgl" if="html5" />
 
-	<define name="no-typedarray-inline" if="cs" />
 	<haxedef name="no-compilation" />
 
 	<templatePath name="templates" />
-	<source path="externs/air" if="air" />
-	<haxeflag name="--macro" value="allowPackage('sys')" if="air" />
 	<sample path="samples" unless="openfl" />
-
-	<haxelib name="nodejs" if="nodejs" />
-	<haxelib name="format" if="java" />
 
 	<target name="ps3" handler="lime-ps3" />
 	<haxelib name="lime-ps3" if="ps3" />
@@ -59,10 +54,8 @@
 
 	<section if="hxp" unless="lime-tools">
 
-		<target name="air" path="tools/platforms/AIRPlatform.hx" />
 		<target name="android" path="tools/platforms/AndroidPlatform.hx" />
 		<target name="emscripten" path="tools/platforms/EmscriptenPlatform.hx" />
-		<target name="flash" path="tools/platforms/FlashPlatform.hx" />
 		<target name="html5" path="tools/platforms/HTML5Platform.hx" />
 		<target name="ios" path="tools/platforms/IOSPlatform.hx" />
 		<target name="linux" path="tools/platforms/LinuxPlatform.hx" />
@@ -75,15 +68,12 @@
 	<section unless="display">
 
 		<section unless="force-synchronous || force_synchronous">
-			<haxedef name="lime-threads" if="neko || cpp || html5" unless="emscripten" />
+			<haxedef name="lime-threads" if="cpp || html5" unless="emscripten" />
 			<!-- `target.threaded` isn't available, so enumerate the targets instead. -->
-			<haxedef name="lime-threads" if="cs || java || python || hl" unless="${${haxe_ver} < 4}" />
-		</section>
+			<haxedef name="lime-threads" if="python || hl" unless="${${haxe_ver} < 4}" />
 
-		<section if="cpp ${${haxe_ver} < 3.3}" unless="static_link">
-			<ndll name="std" haxelib="hxcpp" />
-			<ndll name="regexp" haxelib="hxcpp" />
-			<ndll name="zlib" haxelib="hxcpp" unless="emscripten || ios || tvos" />
+			<!-- For internal use; may be removed or renamed without warning. -->
+			<haxedef name="lime-threads-deque" if="cpp || python || hl" />
 		</section>
 
 		<ndll name="lime" if="native" unless="lime-console static_link || lime-switch static_link" />
@@ -114,6 +104,7 @@
 			<dependency name="Metal.framework" />
 			<dependency name="OpenGLES.framework" />
 			<dependency name="QuartzCore.framework" />
+			<dependency name="Security.framework" />
 			<dependency name="UIKit.framework" />
 		</section>
 
@@ -128,18 +119,14 @@
 			<dependency name="MediaPlayer.framework" />
 			<dependency name="OpenGLES.framework" />
 			<dependency name="QuartzCore.framework" />
+			<dependency name="Security.framework" />
 			<dependency name="UIKit.framework" />
 		</section>
-
-		<define name="native-trace" if="flash" unless="haxe-trace || haxetrace" />
-		<define name="fdb" if="flash debug" unless="nofdb" />
 
 		<define name="MACOSX_DEPLOYMENT_TARGET" value="10.9" if="mac" unless="MACOSX_DEPLOYMENT_TARGET" />
 		<setenv name="MACOSX_DEPLOYMENT_TARGET" value="${MACOSX_DEPLOYMENT_TARGET}" if="mac" />
 
 		<section if="android">
-			<architecture name="armv7" />
-
 			<config:android>
 				<manifest>
 					<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -244,9 +231,6 @@
 		</section>
 
 	</section>
-
-	<haxelib name="hxcpp" if="setup" />
-	<haxelib name="lime-samples" if="setup" />
 
 	<include haxelib="lime-samples" if="create" />
 

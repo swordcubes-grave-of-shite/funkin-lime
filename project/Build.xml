@@ -1,31 +1,29 @@
 <xml>
+
 	<set name="HXCPP_CPP20" value="1" />
 	<set name="OBJC_ARC" value="1" if="apple" />
 
 	<include name="${HXCPP}/build-tool/BuildCommon.xml" />
 
-	<set name="HXCPP_ANDROID_PLATFORM" value="28" if="android" />
-	<set name="PLATFORM_NUMBER" value="28" if="android" />
 	<set name="HXCPP_IOS_MIN_VERSION" value="11.0" if="iphone" />
 	<setenv name="MACOSX_DEPLOYMENT_TARGET" value="10.13" if="mac" />
 
 	<set name="ios" value="1" if="iphone" />
 	<set name="tvos" value="1" if="appletv" />
 	<set name="LIME_CAIRO" value="1" />
-	<set name="LIME_CURL" value="1" unless="winrt" />
-	<set name="LIME_EFSW" value="1" if="windows || mac || linux" unless="winrt" />
+	<set name="LIME_CURL" value="1" />
+	<set name="LIME_EFSW" value="1" if="windows || mac || linux" />
 	<set name="LIME_JPEG" value="1" />
 	<!-- <set name="LIME_FAUDIO" value="1" /> -->
 	<set name="LIME_FREETYPE" value="1" />
-	<set name="LIME_HARFBUZZ" value="1" unless="winrt" />
+	<set name="LIME_HARFBUZZ" value="1" />
 	<!-- <set name="LIME_HASHLINK" value="1" if="windows || mac || linux" /> -->
 	<set name="LIME_HASHLINK" value="1" if="hashlink" />
 	<set name="LIME_LZMA" value="1" />
-	<set name="LIME_MBEDTLS" value="1" unless="emscripten || winrt" />
-	<!-- <set name="LIME_NEKO" value="1" if="linux" /> -->
+	<set name="LIME_MBEDTLS" value="1" unless="emscripten" />
 	<set name="LIME_OGG" value="1" />
-	<set name="LIME_OPENALSOFT" value="1" if="windows || linux || mac || android || iphone || tvos" />
-	<set name="LIME_OPENAL" value="1" if="LIME_OPENALSOFT || webassembly" />
+	<set name="LIME_OPENALSOFT" value="1" if="windows || linux || mac || android || ios || tvos" />
+	<set name="LIME_OPENAL" value="1" if="emscripten || LIME_OPENALSOFT" />
 	<set name="LIME_OPENGL" value="1" />
 	<set name="LIME_GLAD" value="1" if="LIME_OPENGL" unless="ios || tvos" />
 	<set name="LIME_PIXMAN" value="1" />
@@ -154,15 +152,6 @@
 
 		</section>
 
-		<section if="LIME_NEKO">
-
-			<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/neko/vm/" />
-			<compilerflag value="-DLIME_NEKO" />
-
-			<file name="src/vm/NekoVM.cpp" />
-
-		</section>
-
 		<section if="LIME_OGG">
 
 			<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/custom/ogg/include/" />
@@ -231,37 +220,12 @@
 			<section unless="emscripten">
 
 				<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/sdl/include/" />
-				<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/sdl/include/configs/default/" unless="windows || mac || linux || rpi" />
-				<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/sdl/include/configs/linux/" if="linux" unless="rpi" />
-				<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/sdl/include/configs/windows/" if="windows" unless="winrt" />
-				<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/sdl/include/configs/mac/" if="mac" />
-				<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/sdl/include/configs/rpi/" if="rpi" />
-				<compilerflag value="-I${NATIVE_TOOLKIT_PATH}/sdl/include/configs/winrt/" if="winrt" />
-
-				<compilerflag value="-DHAVE_LIBC" />
-
-			</section>
-
-			<section if="rpi">
-
-				<compilerflag value="-I/usr/include/libdrm" />
-				<compilerflag value="-I/usr/include/dbus-1.0" />
-				<compilerflag value="-I/usr/lib/arm-linux-gnueabihf/dbus-1.0/include" unless="HXCPP_ARM64" />
-				<compilerflag value="-I/usr/lib/aarch64-linux-gnu/dbus-1.0/include" if="HXCPP_ARM64" />
-				<compilerflag value="-I/usr/local/include" />
-
-				<compilerflag value="-ldrm" />
-				<compilerflag value="-lgbm" />
-
-				<compilerflag value="-Wl,--no-undefined -lm -ldl -ldrm -lpthread -lrt" />
 
 			</section>
 
 			<compilerflag value="-DLIME_SDL" />
-			<compilerflag value="-D__IPHONEOS__" if="ios || tvos" />
-			<compilerflag value="-D__APPLETVOS__" if="tvos" />
-			<compilerflag value="-DAPPLETV" if="tvos" />
-			<compilerflag value="-DHAVE_STDIO_H" unless="windows" />
+			<compilerflag value="-DSDL_DISABLE_ALLOCA" />
+			<compilerflag value="-DSDL_USE_BUILTIN_OPENGL_DEFINITIONS" />
 
 			<file name="src/backend/sdl/SDLApplication.cpp" />
 			<file name="src/backend/sdl/SDLGamepad.cpp" />
@@ -312,6 +276,7 @@
 		<file name="src/system/JNI.cpp" if="android" />
 		<file name="src/system/Locale.cpp" unless="mac || ios" />
 		<file name="src/system/Locale.mm" if="mac || ios" />
+		<file name="src/system/OrientationEvent.cpp" />
 		<file name="src/system/SensorEvent.cpp" />
 		<file name="src/system/System.cpp" unless="ios" />
 		<file name="src/system/System.mm" if="ios" />
@@ -337,6 +302,7 @@
 		<file name="${ANDROID_NDK_ROOT}/sources/android/cpufeatures/cpu-features.c" />
 
 	</files>
+
 	<!-- Run setup now so the submodule projects can determine whether clang or GCC will be used. -->
 	<!-- TODO: if https://github.com/HaxeFoundation/hxcpp/issues/930 ever gets resolved, use that instead. -->
 	<setup name="androidNdk" if="android" />
@@ -351,7 +317,6 @@
 	<include name="lib/jpeg-files.xml" />
 	<include name="lib/lzma-files.xml" />
 	<include name="lib/mbedtls-files.xml" />
-	<include name="lib/neko-files.xml" />
 	<include name="lib/ogg-files.xml" />
 	<include name="lib/openal-files.xml" />
 	<include name="lib/pixman-files.xml" />
@@ -381,8 +346,7 @@
 		<files id="native-toolkit-harfbuzz" if="LIME_HARFBUZZ" />
 		<files id="native-toolkit-jpeg" if="LIME_JPEG" />
 		<files id="native-toolkit-lzma" if="LIME_LZMA" />
-		<files id="native-toolkit-mbedtls" if="LIME_MBEDTLS" />
-		<files id="native-toolkit-neko" if="LIME_NEKO" />
+		<files id="native-toolkit-mbedtls" if="LIME_MBEDTLS" unless="static_link" />
 		<files id="native-toolkit-ogg" if="LIME_OGG" />
 		<files id="native-toolkit-openal" if="LIME_OPENALSOFT" />
 		<files id="native-toolkit-pixman" if="LIME_PIXMAN" />
@@ -398,43 +362,73 @@
 
 			<ext value=".so" />
 			<ext value=".ndll" if="windows || mac || linux" />
-
-			<!-- TODO: Support single binary -->
 			<ext value=".hdll" if="LIME_HASHLINK" />
 
 			<section if="windows">
 
-				<lib name="gdi32.lib" />
-				<lib name="opengl32.lib" />
-				<lib name="user32.lib" />
-				<lib name="kernel32.lib" />
-				<lib name="advapi32.lib" />
-				<lib name="winmm.lib" />
-				<lib name="imm32.lib" />
-				<lib name="ole32.lib" />
-				<lib name="oleaut32.lib" />
-				<lib name="version.lib" />
-				<lib name="ws2_32.lib" />
-				<lib name="wldap32.lib" />
-				<lib name="shell32.lib" />
-				<lib name="comdlg32.lib" />
-				<lib name="setupapi.lib" />
-				<lib name="avrt.lib" if="LIME_OPENALSOFT"/>
+				<section unless="mingw">
 
-				<lib name="usp10.lib" if="LIME_HARFBUZZ" />
-				<lib name="rpcrt4.lib" if="LIME_HARFBUZZ" />
-				<lib name="dwrite.lib" if="LIME_HARFBUZZ" />
+					<lib name="advapi32.lib" />
+					<lib name="avrt.lib" if="LIME_OPENALSOFT"/>
+					<lib name="bcrypt.lib" if="LIME_CURL" />
+					<lib name="comdlg32.lib" />
+					<lib name="comsuppw.lib" />
+					<lib name="dwrite.lib" if="LIME_HARFBUZZ" />
+					<lib name="gdi32.lib" />
+					<lib name="imm32.lib" />
+					<lib name="kernel32.lib" />
+					<lib name="ole32.lib" />
+					<lib name="oleaut32.lib" />
+					<lib name="opengl32.lib" />
+					<lib name="rpcrt4.lib" if="LIME_HARFBUZZ" />
+					<lib name="setupapi.lib" />
+					<lib name="shell32.lib" />
+					<lib name="user32.lib" />
+					<lib name="usp10.lib" if="LIME_HARFBUZZ" />
+					<lib name="version.lib" />
+					<lib name="wbemuuid.lib" />
+					<lib name="winmm.lib" />
+					<lib name="wldap32.lib" />
+					<lib name="ws2_32.lib" />
 
-				<lib name="comsuppw.lib" unless="winrt" />
+				</section>
 
-				<lib name="D3D11.lib" if="winrt" />
-				<lib name="RuntimeObject.lib" if="winrt" />
-				<lib name="Xinput.lib" if="winrt" />
-				<lib name="DXGI.lib" if="winrt" />
+				<section if="mingw">
 
-				<lib name="-libpath:../templates/bin/hl/${BINDIR}" if="LIME_HASHLINK" />
-				<lib name="libhl.lib" if="LIME_HASHLINK" />
-				<!-- <lib name="-delayload:libhl.dll" /> -->
+					<lib name="-ladvapi32" />
+					<lib name="-lavrt" if="LIME_OPENALSOFT"/>
+					<lib name="-lbcrypt" if="LIME_CURL" />
+					<lib name="-lcomdlg32" />
+					<lib name="-ldwrite" if="LIME_HARFBUZZ" />
+					<lib name="-lgdi32" />
+					<lib name="-lhid" />
+					<lib name="-limm32" />
+					<lib name="-lkernel32" />
+					<lib name="-lole32" />
+					<lib name="-loleaut32" />
+					<lib name="-lopengl32" />
+					<lib name="-lrpcrt4" if="LIME_HARFBUZZ" />
+					<lib name="-lsetupapi" />
+					<lib name="-lshell32" />
+					<lib name="-luser32" />
+					<lib name="-lusp10" if="LIME_HARFBUZZ" />
+					<lib name="-luuid" />
+					<lib name="-lversion" />
+					<lib name="-lwbemuuid" />
+					<lib name="-lwinmm" />
+					<lib name="-lwldap32" />
+					<lib name="-lws2_32" />
+
+				</section>
+
+				<section if="LIME_HASHLINK">
+
+					<lib name="-libpath:../templates/bin/hl/${BINDIR}"  />
+
+					<lib name="libhl.lib" />
+
+				</section>
+
 
 			</section>
 
@@ -443,20 +437,17 @@
 				<lib name="-lpthread" />
 				<lib name="-lrt" />
 
-				<lib name="-lgc" if="LIME_NEKO" />
-				<lib name="-lm" if="LIME_NEKO" />
+				<section if="LIME_HASHLINK">
 
-				<lib name="-L../templates/bin/hl/${BINDIR}" if="LIME_HASHLINK" />
-				<lib name="-lhl" if="LIME_HASHLINK" />
+					<lib name="-L../templates/bin/hl/${BINDIR}" />
+
+					<lib name="-lhl" />
+
+				</section>
 
 			</section>
 
 			<section if="mac">
-				<vflag name="-install_name" value="@executable_path/lime.hdll" if="LIME_HASHLINK"/>
-				<!--
-					starting in xcode 15, rpath doesn't automatically include
-					/usr/local/lib, but we need it for neko
-				-->
 				<vflag name="-rpath" value="/usr/local/lib" />
 				<vflag name="-rpath" value="/opt/homebrew/lib" if="HXCPP_ARM64"/>
 
@@ -480,11 +471,15 @@
 				<vflag name="-framework" value="SystemConfiguration" />
 				<vflag name="-framework" value="UniformTypeIdentifiers" />
 
-				<lib name="/opt/local/lib/libgc.a" if="LIME_NEKO" />
-				<lib name="-lm" if="LIME_NEKO" />
+				<section if="LIME_HASHLINK">
 
-				<lib name="-L../templates/bin/hl/${BINDIR}" if="LIME_HASHLINK" />
-				<lib name="-lhl" if="LIME_HASHLINK" />
+					<vflag name="-install_name" value="@executable_path/lime.hdll" />
+
+					<lib name="-L../templates/bin/hl/${BINDIR}" />
+
+					<lib name="-lhl" />
+
+				</section>
 
 			</section>
 
@@ -550,15 +545,21 @@
 
 	</target>
 
-	<include name="../legacy/project/Build.xml" if="lime-legacy" />
-
 	<target id="default">
 
-		<target id="lime" unless="lime-legacy" />
-		<target id="lime-legacy" if="lime-legacy" />
+		<target id="lime" />
 
 	</target>
-	<copyFile name="lime.lib" from="obj/lib/" overwrite="true" toolId="dll" if="windows LIME_HASHLINK" unless="debug" />
-	<copyFile name="lime-debug.lib" from="obj/lib/" overwrite="true" toolId="dll" if="windows debug LIME_HASHLINK" />
+
+	<section if="LIME_HASHLINK">
+
+		<section if="windows">
+
+			<copyFile name="lime.lib" from="obj/lib/" overwrite="true" toolId="dll" unless="debug" />
+			<copyFile name="lime-debug.lib" from="obj/lib/" overwrite="true" toolId="dll" if="debug" />
+
+		</section>
+
+	</section>
 
 </xml>

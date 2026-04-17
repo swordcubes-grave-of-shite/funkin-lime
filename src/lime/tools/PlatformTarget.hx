@@ -151,27 +151,97 @@ class PlatformTarget
 		}
 	}
 
-	@ignore public function build():Void {}
+	// Command implementations
 
-	@ignore public function clean():Void {}
+	public function build():Void {}
 
-	@ignore public function deploy():Void {}
+	public function clean():Void
+	{
+		if (FileSystem.exists(targetDirectory))
+		{
+			System.removeDirectory(targetDirectory);
+		}
+	}
 
-	@ignore public function display():Void {}
+	public function deploy():Void {}
 
-	@ignore public function install():Void {}
+	public function display():Void {}
 
-	@ignore public function rebuild():Void {}
+	public function install():Void {}
 
-	@ignore public function run():Void {}
+	public function rebuild():Void {}
 
-	@ignore public function trace():Void {}
+	public function run():Void {}
 
-	@ignore public function uninstall():Void {}
+	public function trace():Void {}
 
-	@ignore public function update():Void {}
+	public function uninstall():Void {}
 
-	@ignore public function watch():Void {}
+	public function update():Void {}
+
+	public function watch():Void
+	{
+		var hxml = getDisplayHXML();
+		if (hxml == null)
+		{
+			return;
+		}
+
+		var dirs = hxml.getClassPaths(true);
+
+		var outputPath = Path.combine(Sys.getCwd(), project.app.path);
+		dirs = dirs.filter(function(dir)
+		{
+			return (!Path.startsWith(dir, outputPath));
+		});
+
+		var command = ProjectHelper.getCurrentCommand();
+		System.watch(command, dirs);
+	}
+
+	// Common functionality used by subclasses
+
+	private function copyProjectAssets(outputDirectory:String, assetDirectory:String = null)
+	{
+		if (assetDirectory == null)
+		{
+			assetDirectory = outputDirectory;
+		}
+		else if (!StringTools.startsWith(assetDirectory, targetDirectory))
+		{
+			assetDirectory = Path.combine(outputDirectory, assetDirectory);
+		}
+
+		var embedDirectory = Path.combine(targetDirectory, "obj/tmp");
+
+		for (asset in project.assets)
+		{
+			if (asset.type == AssetType.TEMPLATE)
+			{
+				var path = Path.combine(outputDirectory, asset.targetPath);
+				System.mkdir(Path.directory(path));
+				AssetHelper.copyAsset(asset, path, project.templateContext);
+			}
+			else if (asset.embed == true)
+			{
+				if (asset.sourcePath == "")
+				{
+					var path = Path.combine(embedDirectory, asset.targetPath);
+					System.mkdir(Path.directory(path));
+					AssetHelper.copyAsset(asset, path);
+					asset.sourcePath = path;
+				}
+			}
+			else
+			{
+				var path = Path.combine(assetDirectory, asset.targetPath);
+				System.mkdir(Path.directory(path));
+				AssetHelper.copyAssetIfNewer(asset, path);
+			}
+		}
+	}
+
+	private function getDisplayHXML():HXML { return null; }
 
 	// Functions to track and delete stale files
 

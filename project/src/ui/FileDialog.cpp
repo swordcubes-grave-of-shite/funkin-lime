@@ -1,8 +1,6 @@
 #include <ui/FileDialog.h>
 #ifdef LIME_SDL
 #include "../backend/sdl/SDLWindow.h"
-#include <SDL3/SDL_properties.h>
-#include <SDL3/SDL_dialog.h>
 #endif
 #include <stdio.h>
 #include <vector>
@@ -15,7 +13,6 @@ namespace lime {
 	struct FileDialogData {
 		std::function<void(const char* const*, int, int)> callback;
 		std::vector<SDL_DialogFileFilter> filters;
-		SDL_PropertiesID props;
 	};
 
 
@@ -116,7 +113,6 @@ namespace lime {
 			}
 
 			SDL_RunOnMainThread (mainThreadCallback, mainData, false);
-			SDL_DestroyProperties (data->props);
 
 		}
 

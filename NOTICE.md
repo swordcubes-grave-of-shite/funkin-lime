@@ -2,7 +2,7 @@ Notices
 =======
 
 ### Lime
-Copyright (c) 2013-2024 Joshua Granick and other Lime contributors
+Copyright (c) 2013-2025 Joshua Granick and other Lime contributors
 
 This product bundles cairo 1.15.2, which is available under an
 "MPL 1.1" license. For details, see [project/lib/cairo/](project/lib).
@@ -75,7 +75,6 @@ https://github.com/haxenme/nme
     project/src/system/JNI.cpp
     project/src/text/Font.cpp
     project/src/utils/compress/LZMA.cpp
-    tools/utils/JavaExternGenerator.hx
 
 The typed array implementation was developed in collaboration with Sven Bergström
 and the hxtypedarray project, which is available under an "MIT" license.
@@ -136,6 +135,3 @@ This product bundles http-server 0.10.0 and its dependencies, which is available
 
 This product bundles webify 0.1.1.0, which is available under an
 "MIT" license. For details, see https://github.com/ananthakumaran/webify.
-
-This product bundles YUI Compressor 2.4.7, which is available under an
-"MIT" license. For details, see https://github.com/yui/yuicompressor.

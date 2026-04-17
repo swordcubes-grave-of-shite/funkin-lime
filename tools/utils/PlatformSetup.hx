@@ -359,15 +359,8 @@ class PlatformSetup
 
 			switch (target)
 			{
-				case "air":
-					setupAIR();
-
 				case "android":
 					setupAndroid();
-
-				case "blackberry":
-
-				// setupBlackBerry ();
 
 				case "html5":
 					Log.println("\x1b[0;3mNo additional configuration is required.\x1b[0m");
@@ -391,28 +384,21 @@ class PlatformSetup
 						setupMac();
 					}
 
-				case "tizen":
-
-				// setupTizen ();
-
 				case "webassembly", "wasm", "emscripten":
 					setupWebAssembly();
-
-				case "webos":
-
-				// setupWebOS ();
 
 				case "electron":
 					setupElectron();
 
-				case "windows", "winrt":
-					if (System.hostPlatform == WINDOWS)
+				case "windows":
+					if (targetFlags.exists("mingw"))
+					{
+						setupMinGW();
+					}
+					else if (System.hostPlatform == WINDOWS)
 					{
 						setupWindows();
 					}
-
-				case "neko", "cs", "uwp", "winjs", "nodejs", "java":
-					Log.println("\x1b[0;3mNo additional configuration is required.\x1b[0m");
 
 				case "hl", "hashlink":
 					setupHL();
@@ -504,9 +490,9 @@ class PlatformSetup
 
 				if (volumePath != "" && FileSystem.exists(volumePath))
 				{
-					var apps = [];
-					var packages = [];
-					var executables = [];
+					var apps:Array<String> = [];
+					var packages:Array<String> = [];
+					var executables:Array<String> = [];
 
 					var files:Array<String> = FileSystem.readDirectory(volumePath);
 
@@ -570,18 +556,6 @@ class PlatformSetup
 				System.runCommand("", "open", [path], false);
 			}
 		}
-	}
-
-	public static function setupAIR():Void
-	{
-		Log.println("\x1b[1mIn order to package SWF applications using Adobe AIR, you must");
-		Log.println("download and extract the Adobe AIR SDK.");
-		Log.println("");
-
-		getDefineValue("AIR_SDK", "Absolute path to AIR SDK");
-
-		Log.println("");
-		Log.println("Setup complete.");
 	}
 
 	public static function setupAndroid():Void
@@ -718,19 +692,13 @@ class PlatformSetup
 		// 	}
 
 		// 	createPath (path + "/lib");
-		// 	var libs = [ "android", "bada-wac", "bada", "blackberry", "ios", "mac", "qt", "tizen", "tvos", "webos", "wp7" ];
+		// 	var libs = [ "android", "bada-wac", "bada", "ios", "mac", "qt", "tvos", "wp7" ];
 
 		// 	for (archive in childArchives) {
 
 		// 		var name = Path.withoutExtension (archive);
 		// 		name = StringTools.replace (name, "incubator-", "");
 		// 		name = StringTools.replace (name, "cordova-", "");
-
-		// 		if (name == "blackberry-webworks") {
-
-		// 			name = "blackberry";
-
-		// 		}
 
 		// 		var basePath = path + "/";
 
@@ -816,11 +784,6 @@ class PlatformSetup
 			setupHaxelib(new Haxelib("lime"));
 		}
 
-		if (System.hostPlatform == MAC)
-		{
-			ConfigHelper.writeConfigValue("MAC_USE_CURRENT_SDK", "1");
-		}
-
 		if (targetFlags.exists("noalias"))
 		{
 			return;
@@ -839,30 +802,23 @@ class PlatformSetup
 			}
 
 			var copyFailure = false;
-			var exeDestPath = haxePath + "\\lime.exe";
+			var batDestPath = haxePath + "\\lime.bat";
 			try
 			{
-				File.copy(Haxelib.getPath(new Haxelib("lime")) + "\\templates\\\\bin\\lime.exe", exeDestPath);
-			}
-			catch (e:Dynamic)
-			{
-				copyFailure = true;
-				if (Log.verbose)
+				// To remove the old lime behaviour
+				if (FileSystem.exists(haxePath + "\\lime.exe"))
 				{
-					Log.warn("Failed to copy lime.exe alias to destination: " + exeDestPath);
+					FileSystem.deleteFile(haxePath + "\\lime.exe");
 				}
-			}
-			var shDestPath = haxePath + "\\lime";
-			try
-			{
-				File.copy(Haxelib.getPath(new Haxelib("lime")) + "\\templates\\\\bin\\lime.sh", shDestPath);
+
+				File.copy(Haxelib.getPath(new Haxelib("lime")) + "\\templates\\\\bin\\lime.bat", batDestPath);
 			}
 			catch (e:Dynamic)
 			{
 				copyFailure = true;
 				if (Log.verbose)
 				{
-					Log.warn("Failed to copy lime.sh alias to destination: " + shDestPath);
+					Log.warn("Failed to copy lime.bat alias to destination: " + batDestPath);
 				}
 			}
 			if (Log.verbose && copyFailure && usingDefaultHaxePath && !FileSystem.exists(haxePath))
@@ -880,13 +836,16 @@ class PlatformSetup
 			var installedCommand = false;
 			var answer = YES;
 
-			if (targetFlags.exists("y"))
+			if (!(targetFlags.exists("alias") || targetFlags.exists("cli")))
 			{
-				Sys.println("Do you want to install the \"lime\" command? [y/n/a] y");
-			}
-			else
-			{
-				answer = CLIHelper.ask("Do you want to install the \"lime\" command?");
+				if (targetFlags.exists("y"))
+				{
+					Sys.println("Do you want to install the \"lime\" command? [y/n/a] y");
+				}
+				else
+				{
+					answer = CLIHelper.ask("Do you want to install the \"lime\" command?");
+				}
 			}
 
 			if (answer == YES || answer == ALWAYS)
@@ -1079,18 +1038,13 @@ class PlatformSetup
 			setupHaxelib(new Haxelib("openfl"));
 		}
 
-		if (System.hostPlatform == MAC)
-		{
-			ConfigHelper.writeConfigValue("MAC_USE_CURRENT_SDK", "1");
-		}
-
 		if (targetFlags.exists("noalias"))
 		{
 			return;
 		}
 
 		var haxePath = Sys.getEnv("HAXEPATH");
-		var project = null;
+		var project:HXProject = null;
 
 		try
 		{
@@ -1107,19 +1061,25 @@ class PlatformSetup
 
 			try
 			{
-				File.copy(Haxelib.getPath(new Haxelib("lime")) + "\\templates\\\\bin\\lime.exe", haxePath + "\\lime.exe");
-			}
-			catch (e:Dynamic) {}
-			try
-			{
-				File.copy(Haxelib.getPath(new Haxelib("lime")) + "\\templates\\\\bin\\lime.sh", haxePath + "\\lime");
+				// To remove the old lime behaviour
+				if (FileSystem.exists(haxePath + "\\lime.exe"))
+				{
+					FileSystem.deleteFile(haxePath + "\\lime.exe");
+				}
+
+				File.copy(Haxelib.getPath(new Haxelib("lime")) + "\\templates\\\\bin\\lime.bat", haxePath + "\\lime.bat");
 			}
 			catch (e:Dynamic) {}
 
 			try
 			{
-				System.copyFileTemplate(project.templatePaths, "bin/openfl.exe", haxePath + "\\openfl.exe");
-				System.copyFileTemplate(project.templatePaths, "bin/openfl.sh", haxePath + "\\openfl");
+				// To remove the old lime behaviour
+				if (FileSystem.exists(haxePath + "\\openfl.exe"))
+				{
+					FileSystem.deleteFile(haxePath + "\\openfl.exe");
+				}
+
+				System.copyFileTemplate(project.templatePaths, "bin/openfl.bat", haxePath + "\\openfl.bat");
 			}
 			catch (e:Dynamic) {}
 		}
@@ -1133,13 +1093,16 @@ class PlatformSetup
 			var installedCommand = false;
 			var answer = YES;
 
-			if (targetFlags.exists("y"))
+			if (!(targetFlags.exists("alias") || targetFlags.exists("cli")))
 			{
-				Sys.println("Do you want to install the \"openfl\" command? [y/n/a] y");
-			}
-			else
-			{
-				answer = CLIHelper.ask("Do you want to install the \"openfl\" command?");
+				if (targetFlags.exists("y"))
+				{
+					Sys.println("Do you want to install the \"openfl\" command? [y/n/a] y");
+				}
+				else
+				{
+					answer = CLIHelper.ask("Do you want to install the \"openfl\" command?");
+				}
 			}
 
 			if (answer == YES || answer == ALWAYS)
@@ -1213,7 +1176,7 @@ class PlatformSetup
 		Log.println("After install, the SDK path may be at \"emsdk/upstream/emscripten\"");
 		Log.println("");
 
-		getDefineValue("EMSCRIPTEN_SDK", "Absolute path to Emscripten SDK");
+		getDefineValue("EMSDK", "Absolute path to Emscripten SDK");
 
 		Log.println("");
 		Log.println("Setup complete.");
@@ -1237,11 +1200,25 @@ class PlatformSetup
 		}
 	}
 
+	public static function setupMinGW():Void
+	{
+		Log.println("\x1b[1mIn order to compile Windows applications with MinGW, you must download");
+		Log.println("and extract the MinGW toolchain on your system.");
+		Log.println("");
+
+		getDefineValue("MINGW_ROOT", "Absolute path to MinGW");
+
+		Log.println("");
+		Log.println("Setup complete.");
+	}
+
 	public static function setupHL():Void
 	{
 		var message = "Absolute path to a custom version of HashLink.";
 		if (ConfigHelper.getConfigValue("HL_PATH") == null) {
 			message += " Leave empty to use Lime's default bundled version.";
+		} else {
+			message += " Leave empty to keep the currently configured version. To restore Lime's default bundled version, run the command: lime config remove HL_PATH";
 		}
 		getDefineValue("HL_PATH", message);
 		if (System.hostPlatform == MAC)

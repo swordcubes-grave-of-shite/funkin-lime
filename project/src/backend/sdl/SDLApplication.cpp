@@ -177,6 +177,17 @@ namespace lime {
 				ProcessGamepadEvent (event);
 				break;
 
+			case SDL_EVENT_DISPLAY_ORIENTATION:
+
+				// this is the orientation of what is rendered, which
+				// may not exactly match the orientation of the device,
+				// if the app was locked to portrait or landscape.
+				orientationEvent.type = DISPLAY_ORIENTATION_CHANGE;
+				orientationEvent.orientation = event->display.data1;
+				orientationEvent.display = event->display.displayID;
+				OrientationEvent::Dispatch (&orientationEvent);
+				break;
+
 			case SDL_EVENT_DROP_FILE:
 			case SDL_EVENT_DROP_TEXT:
 			case SDL_EVENT_DROP_BEGIN:
@@ -744,11 +755,24 @@ namespace lime {
 					windowEvent.y = event->window.data2;
 					break;
 
-				case SDL_EVENT_WINDOW_RESIZED:
+				case SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED:
+				case SDL_EVENT_WINDOW_RESIZED: {
+
+					int width = event->window.data1;
+					int height = event->window.data2;
+
+					if (width == 0 && height == 0) {
+
+						SDL_GetWindowSizeInPixels (SDL_GetWindowFromID (event->window.windowID), &width, &height);
+
+					}
+
 					windowEvent.type = WINDOW_RESIZE;
-					windowEvent.width = event->window.data1;
-					windowEvent.height = event->window.data2;
+					windowEvent.width = width;
+					windowEvent.height = height;
 					break;
+
+				}
 
 				case SDL_EVENT_WINDOW_RESTORED: windowEvent.type = WINDOW_RESTORE; break;
 

@@ -88,7 +88,6 @@ namespace lime {
 				}
 
 			}
-
 			DropEvent::callback->Call ();
 
 		}

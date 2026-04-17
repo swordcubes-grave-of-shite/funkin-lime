@@ -18,23 +18,22 @@ class AndroidHelper
 			Sys.putEnv("ANDROID_SDK", project.environment.get("ANDROID_SDK"));
 		}
 
-		var task = project.targetFlags.exists("bundle") ? "bundleDebug" : "assembleDebug";
-
-		if (project.keystore != null)
-		{
-			if (StringTools.startsWith(task, "bundle"))
-			{
-				task = "bundleRelease";
-			}
-			else
-			{
-				task = "assembleRelease";
-			}
-		}
+		var task = '';
 
 		if (project.environment.exists("ANDROID_GRADLE_TASK"))
 		{
 			task = project.environment.get("ANDROID_GRADLE_TASK");
+		}
+		else
+		{
+			if (project.targetFlags.exists("bundle"))
+			{
+				task = project.keystore != null ? "bundleRelease" : "bundleDebug";
+			}
+			else
+			{
+				task = project.keystore != null ? "assembleRelease" : "assembleDebug";
+			}
 		}
 
 		var args = task.split(" ");
@@ -196,6 +195,17 @@ class AndroidHelper
 
 		if (project.environment.exists("JAVA_HOME"))
 		{
+			var javaHome = project.environment.get("JAVA_HOME");
+			if (!FileSystem.exists(javaHome))
+			{
+				Log.error("The path specified for JAVA_HOME does not exist: " + javaHome);
+				Sys.exit(1);
+			}
+			if (!FileSystem.isDirectory(javaHome))
+			{
+				Log.error("The path specified for JAVA_HOME must be a directory: " + javaHome);
+				Sys.exit(1);
+			}
 			Sys.putEnv("JAVA_HOME", project.environment.get("JAVA_HOME"));
 		}
 	}
@@ -272,15 +282,18 @@ class AndroidHelper
 			System.runCommand(adbPath, adbName, ["-s", deviceID, "shell", "input", "keyevent", "82"]);
 		}
 
-		final executableName:String = (isBundle) ? "java -jar " + Haxelib.getPath(new Haxelib("lime")) + "/templates/bin/android/bundletool.jar" : "adb";
-		var args:Array<String>;
+		var args = null;
 
 		if (isBundle)
 		{
-			final apksPath:String = haxe.io.Path.withoutExtension(targetPath) + ".apks";
+			var bundletoolPath = Path.combine(Haxelib.getPath(new Haxelib("lime")), "templates/bin/android/bundletool.jar");
+
+			var apksPath = haxe.io.Path.withExtension(targetPath, "apks");
 
 			if (FileSystem.exists(apksPath))
-				FileSystem.deleteFile(apksPath);
+			{
+				System.deleteFile(apksPath);
+			}
 
 			args = ["build-apks"];
 
@@ -292,21 +305,37 @@ class AndroidHelper
 			args.push("--ks-key-alias=" + project.keystore.alias);
 			args.push("--key-pass=pass:" + project.keystore.password);
 
-			System.runCommand(project.environment.get("JAVA_HOME") + 'bin/', executableName, args);
+			if (deviceID != null && deviceID != "")
+			{
+				args.push("--device-id=" + deviceID);
+			}
+
+			args.unshift(bundletoolPath);
+			args.unshift("-jar");
+
+			System.runCommand(Path.combine(project.environment.get("JAVA_HOME"), "bin"), "java", args);
 
 			args = ["install-apks"];
+
 			args.push("--apks=" + apksPath);
 
 			if (deviceID != null && deviceID != "")
-				connect(deviceID);
+			{
+				args.push("--device-id=" + deviceID);
+			}
+
+			args.unshift(bundletoolPath);
+			args.unshift("-jar");
+
+			System.runCommand(Path.combine(project.environment.get("JAVA_HOME"), "bin"), "java", args);
 		}
 		else
 		{
-			args = ["install", "-r"];
+			var args = ["install", "-r"];
 
 			// if (getDeviceSDKVersion (deviceID) > 16) {
 
-				args.push("-d");
+			args.push("-d");
 
 			// }
 
@@ -319,9 +348,9 @@ class AndroidHelper
 
 				connect(deviceID);
 			}
-		}
 
-		System.runCommand((isBundle) ? project.environment.get("JAVA_HOME") + 'bin/' : adbPath, executableName, args);
+			System.runCommand(adbPath, adbName, args);
+		}
 
 		return deviceID;
 	}

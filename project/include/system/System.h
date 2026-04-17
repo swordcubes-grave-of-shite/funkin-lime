@@ -41,22 +41,23 @@ namespace lime {
 			static int GetFirstGyroscopeSensorId ();
 			static int GetFirstAccelerometerSensorId ();
 			static int GetNumDisplays ();
+			static int GetDeviceOrientation ();
 			static std::wstring* GetPlatformLabel ();
 			static std::wstring* GetPlatformName ();
 			static std::wstring* GetPlatformVersion ();
 			static double GetTimer ();
-			#if defined(HX_WINDOWS) && !defined (HX_WINRT)
+			#if defined(HX_WINDOWS)
 			static int GetWindowsConsoleMode (int handleType);
 			#endif
 			static void OpenFile (const char* path);
 			static void OpenURL (const char* url, const char* target);
-			static bool SetAllowScreenTimeout (bool allow);
-			static int GetDisplayOrientation (int displayIndex);
 			static std::wstring* GetHint (const char* key);
 			static void SetHint (const char* key, const char* value);
-			#if defined(HX_WINDOWS) && !defined (HX_WINRT)
+			static bool SetAllowScreenTimeout (bool allow);
+			#if defined(HX_WINDOWS)
 			static bool SetWindowsConsoleMode (int handleType, int mode);
 			#endif
+			static void EnableDeviceOrientationChange(bool enable);
 
 		private:
 
@@ -72,17 +73,11 @@ namespace lime {
 
 		FILE_HANDLE (void* handle) : handle (handle) {}
 
-		FILE* getFile ();
-		int getLength ();
-		bool isFile ();
-
 	};
 
 
 	extern int fclose (FILE_HANDLE *stream);
-	//extern FILE_HANDLE *fdopen (int fd, const char *mode);
 	extern FILE_HANDLE *fopen (const char *filename, const char *mode);
-	//extern FILE* freopen (const char *filename, const char *mode, FILE *stream);
 	extern size_t fread (void *ptr, size_t size, size_t count, FILE_HANDLE *stream);
 	extern int fseek (FILE_HANDLE *stream, long int offset, int origin);
 	extern long int ftell (FILE_HANDLE *stream);
@@ -92,7 +87,7 @@ namespace lime {
 }
 
 
-#ifndef HX_WINDOWS
+#if !defined(HX_WINDOWS) || defined(__MINGW32__)
 #include <stdint.h>
 #else
 

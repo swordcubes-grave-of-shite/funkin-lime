@@ -58,18 +58,17 @@ class IOSPlatform extends PlatformTarget
 				file: "MyApplication",
 				path: "bin",
 				preloader: "",
-				swfVersion: 17,
 				url: "",
 				init: null
 			};
 
 		defaults.window =
 			{
-				width: 800,
-				height: 600,
+				width: 0,
+				height: 0,
 				parameters: "{}",
 				background: 0xFFFFFF,
-				fps: 30,
+				fps: 60,
 				hardware: true,
 				display: 0,
 				resizable: true,
@@ -77,12 +76,12 @@ class IOSPlatform extends PlatformTarget
 				borderless: false,
 				orientation: Orientation.AUTO,
 				vsync: false,
-				fullscreen: false,
+				fullscreen: true,
 				allowHighDPI: true,
 				alwaysOnTop: false,
 				antialiasing: 0,
 				allowShaders: true,
-				requireShaders: false,
+				requireShaders: true,
 				depthBuffer: true,
 				stencilBuffer: true,
 				colorDepth: 32,
@@ -93,10 +92,6 @@ class IOSPlatform extends PlatformTarget
 			};
 
 		defaults.architectures = [Architecture.ARM64];
-		defaults.window.width = 0;
-		defaults.window.height = 0;
-		defaults.window.fullscreen = true;
-		defaults.window.requireShaders = true;
 
 		for (i in 1...project.windows.length)
 		{
@@ -133,14 +128,6 @@ class IOSPlatform extends PlatformTarget
 		}
 	}
 
-	public override function clean():Void
-	{
-		if (FileSystem.exists(targetDirectory))
-		{
-			System.removeDirectory(targetDirectory);
-		}
-	}
-
 	public override function deploy():Void
 	{
 		IOSHelper.deploy(project, targetDirectory);
@@ -160,15 +147,18 @@ class IOSPlatform extends PlatformTarget
 
 	private function generateContext():Dynamic
 	{
-		// project = project.clone ();
-
 		project.sources.unshift("");
 		project.sources = Path.relocatePaths(project.sources, Path.combine(targetDirectory, project.app.file + "/haxe"));
 		// project.dependencies.push ("stdc++");
 
 		if (project.targetFlags.exists("xml"))
 		{
-			project.haxeflags.push("-xml " + targetDirectory + "/types.xml");
+			project.haxeflags.push("--xml " + targetDirectory + "/types.xml");
+		}
+
+		if (project.targetFlags.exists("json"))
+		{
+			project.haxeflags.push("--json " + targetDirectory + "/types.json");
 		}
 
 		if (project.targetFlags.exists("final"))
@@ -243,11 +233,8 @@ class IOSPlatform extends PlatformTarget
 		}
 
 		var valid_archs = new Array<String>();
-		var armv6 = false;
-		var armv7 = false;
-		var armv7s = false;
 		var arm64 = false;
-		var i386 = false;
+		var x64 = false;
 		var architectures = project.architectures;
 
 		if (architectures == null || architectures.length == 0)
@@ -255,65 +242,38 @@ class IOSPlatform extends PlatformTarget
 			architectures = [Architecture.ARM64];
 		}
 
-		if (project.config.getString("ios.device", "universal") == "universal" || project.config.getString("ios.device") == "iphone")
-		{
-			if (project.config.getFloat("ios.deployment", 13) < 5)
-			{
-				ArrayTools.addUnique(architectures, Architecture.ARMV6);
-			}
-		}
-
 		for (architecture in project.architectures)
 		{
 			switch (architecture)
 			{
-				case ARMV6:
-					valid_archs.push("armv6");
-					armv6 = true;
-				case ARMV7:
-					valid_archs.push("armv7");
-					armv7 = true;
-				case ARMV7S:
-					valid_archs.push("armv7s");
-					armv7s = true;
 				case ARM64:
 					valid_archs.push("arm64");
 					arm64 = true;
-				case X86:
-					valid_archs.push("i386");
-					i386 = true;
 				default:
 			}
 		}
 
 		context.CURRENT_ARCHS = "( " + valid_archs.join(",") + ") ";
 
-		valid_archs.push("x86_64");
+		if (System.hostArchitecture == X64)
+		{
+			valid_archs.push("x86_64");
+			x64 = true;
+		}
 
 		context.VALID_ARCHS = valid_archs.join(" ");
-		context.THUMB_SUPPORT = armv6 ? "GCC_THUMB_SUPPORT = NO;" : "";
+		context.THUMB_SUPPORT = "";
 
-		var requiredCapabilities = [];
+		var requiredCapabilities:Array<{name:String, value:Bool}> = [];
 
-		if (!armv6 && armv7)
-		{
-			requiredCapabilities.push({name: "armv7", value: true});
-		}
-		else if (!armv6 && !armv7 && armv7s)
-		{
-			requiredCapabilities.push({name: "armv7s", value: true});
-		}
-		else if (!armv6 && !armv7 && !armv7s && arm64)
+		if (arm64)
 		{
 			requiredCapabilities.push({name: "arm64", value: true});
 		}
 
 		context.REQUIRED_CAPABILITY = requiredCapabilities;
-		context.ARMV6 = armv6;
-		context.ARMV7 = armv7;
-		context.ARMV7S = armv7s;
 		context.ARM64 = arm64;
-		context.I386 = i386;
+		context.X64 = x64;
 		context.TARGET_DEVICES = switch (project.config.getString("ios.device", "universal"))
 		{
 			case "iphone": "1";
@@ -332,25 +292,10 @@ class IOSPlatform extends PlatformTarget
 		context.IOS_COMPILER = project.config.getString("ios.compiler", "clang");
 		context.CPP_BUILD_LIBRARY = project.config.getString("cpp.buildLibrary", "hxcpp");
 
-		var json = Json.parse(File.getContent(Haxelib.getPath(new Haxelib("hxcpp"), true) + "/haxelib.json"));
-
-		var version = Std.string(json.version);
-		var versionSplit = version.split(".");
-
-		while (versionSplit.length > 2)
-			versionSplit.pop();
-
-		if (Std.parseFloat(versionSplit.join(".")) > 3.1)
-		{
-			context.CPP_LIBPREFIX = "lib";
-		}
-		else
-		{
-			context.CPP_LIBPREFIX = "";
-		}
+		context.CPP_CACHE_WORKAROUND = "unset HXCPP_COMPILE_CACHE;";
 
 		context.IOS_LINKER_FLAGS = ["-stdlib=libc++"].concat(project.config.getArrayString("ios.linker-flags"));
-		context.IOS_NON_EXEMPT_ENCRYPTION = project.config.getBool("ios.non-exempt-encryption", true);
+		context.IOS_NON_EXEMPT_ENCRYPTION = project.config.getBool("ios.non-exempt-encryption", false);
 
 		switch (project.window.orientation)
 		{
@@ -380,10 +325,10 @@ class IOSPlatform extends PlatformTarget
 
 		for (dependency in project.dependencies)
 		{
-			var name = null;
-			var path = null;
-			var fileType = null;
-			var embed = null;
+			var name:String = null;
+			var path:String = null;
+			var fileType:String = null;
+			var embed:Bool = false;
 
 			if (Path.extension(dependency.name) == "tbd")
 			{
@@ -438,7 +383,7 @@ class IOSPlatform extends PlatformTarget
 						context.ADDL_PBX_FRAMEWORKS_BUILD_PHASE += "                " + buildFileID + " /* " + name + " in Frameworks */,\n";
 						context.ADDL_PBX_FRAMEWORK_GROUP += "                " + fileID + " /* " + name + " */,\n";
 
-						if (embed == true)
+						if (embed)
 						{
 							context.ADDL_PBX_BUILD_FILE += "        " + embedFileID + " /* " + name + " in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = " + fileID + " /* " + name + " */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy); }; };\n";
 							context.ADDL_PBX_EMBED_FRAMEWORKS_BUILD_PHASE += "                " + embedFileID + " /* " + name + " in Embed Frameworks */,\n";
@@ -459,7 +404,7 @@ class IOSPlatform extends PlatformTarget
 
 		if (allowInsecureHTTP != "*" && allowInsecureHTTP != "true")
 		{
-			var sites = [];
+			var sites:Array<{domain: String}> = [];
 
 			if (allowInsecureHTTP != "false")
 			{
@@ -490,7 +435,7 @@ class IOSPlatform extends PlatformTarget
 		return context;
 	}
 
-	private function getDisplayHXML():HXML
+	private override function getDisplayHXML():HXML
 	{
 		var path = targetDirectory + "/" + project.app.file + "/haxe/Build.hxml";
 
@@ -517,23 +462,16 @@ class IOSPlatform extends PlatformTarget
 
 	public override function rebuild():Void
 	{
-		var armv6 = (project.architectures.indexOf(Architecture.ARMV6) > -1 && !project.targetFlags.exists("simulator"));
-		var armv7 = (project.architectures.indexOf(Architecture.ARMV7) > -1 && !project.targetFlags.exists("simulator"));
-		var armv7s = (project.architectures.indexOf(Architecture.ARMV7S) > -1 && !project.targetFlags.exists("simulator"));
-		var arm64 = (command == "rebuild" || (project.architectures.indexOf(Architecture.ARM64) > -1));
-		var i386 = (project.architectures.indexOf(Architecture.X86) > -1 && project.targetFlags.exists("simulator"));
-		var x86_64 = (command == "rebuild" || project.architectures.indexOf(Architecture.X64) > -1 && project.targetFlags.exists("simulator"));
+		var arm64 = (command == "rebuild" && !project.targetFlags.exists("simulator"));
+		var arm64sim = (command == "rebuild" && project.targetFlags.exists("simulator"));
+		var x86_64 = (command == "rebuild" || (project.architectures.indexOf(Architecture.X64) > -1 && project.targetFlags.exists("simulator")));
 
 		var arc = (project.targetFlags.exists("arc"));
 
-		var commands = [];
+		var commands:Array<Array<String>> = [];
 
-		if (armv6) commands.push(["-Dios", "-DHXCPP_ARMV6"]);
-		if (armv7) commands.push(["-Dios", "-DHXCPP_ARMV7"]);
-		if (armv7s) commands.push(["-Dios", "-DHXCPP_ARMV7S"]);
 		if (arm64) commands.push(["-Dios", "-DHXCPP_ARM64"]);
-		if (arm64 && project.targetFlags.exists("simulator")) commands.push(["-Dios", "-Dsimulator", "-DHXCPP_ARM64"]);
-		if (i386) commands.push(["-Dios", "-Dsimulator", "-DHXCPP_M32"]);
+		if (arm64sim) commands.push(["-Dios", "-Dsimulator", "-DHXCPP_ARM64"]);
 		if (x86_64) commands.push(["-Dios", "-Dsimulator", "-DHXCPP_M64"]);
 
 		if (arc)
@@ -565,26 +503,6 @@ class IOSPlatform extends PlatformTarget
 	public override function update():Void
 	{
 		AssetHelper.processLibraries(project, targetDirectory);
-
-		// project = project.clone ();
-
-		for (asset in project.assets)
-		{
-			if (asset.embed && asset.sourcePath == "")
-			{
-				var path = Path.combine(targetDirectory + "/" + project.app.file + "/obj/tmp", asset.targetPath);
-				System.mkdir(Path.directory(path));
-				AssetHelper.copyAsset(asset, path);
-				asset.sourcePath = path;
-			}
-		}
-
-		// var manifest = new Asset ();
-		// manifest.id = "__manifest__";
-		// manifest.data = AssetHelper.createManifest (project).serialize ();
-		// manifest.resourceName = manifest.flatName = manifest.targetPath = "manifest";
-		// manifest.type = AssetType.TEXT;
-		// project.assets.push (manifest);
 
 		var context = generateContext();
 		context.OUTPUT_DIR = targetDirectory;
@@ -645,7 +563,7 @@ class IOSPlatform extends PlatformTarget
 			var sb = project.launchStoryboard;
 
 			var assetsPath = sb.assetsPath;
-			var imagesets = [];
+			var imagesets:Array<ImageSet> = [];
 
 			for (asset in sb.assets)
 			{
@@ -661,7 +579,7 @@ class IOSPlatform extends PlatformTarget
 						var baseImageName = Path.withoutExtension(imageset.name);
 
 						var imageScales = ["1x", "2x", "3x"];
-						var images = [];
+						var images:Array<{idiom:String, filename:String, scale:String}> = [];
 						for (scale in imageScales)
 						{
 							var filename = baseImageName + (scale == "1x" ? "" : "@" + scale) + ".png";
@@ -830,37 +748,21 @@ class IOSPlatform extends PlatformTarget
 
 		System.mkdir(projectDirectory + "/lib");
 
-		for (archID in 0...7)
+		for (archID in 0...3)
 		{
-			var arch = ["armv6", "armv7", "armv7s", "arm64", "i386", "x86_64", "arm64-sim"][archID];
-			var arm64Device:Bool = context.ARM64 && !project.targetFlags.exists("simulator");
-			var arm64Sim:Bool = context.ARM64 && project.targetFlags.exists("simulator");
+			var arch = ["arm64", "arm64-sim", "x86_64"][archID];
 
-			if (arch == "armv6" && !context.ARMV6) continue;
+			if (arch == "arm64" && (!context.ARM64 || project.targetFlags.exists("simulator"))) continue;
 
-			if (arch == "armv7" && !context.ARMV7) continue;
+			if (arch == "arm64-sim" && (!context.ARM64 || !project.targetFlags.exists("simulator"))) continue;
 
-			if (arch == "armv7s" && !context.ARMV7S) continue;
-
-			if (arch == "arm64" && !arm64Device) continue;
-
-			if (arch == "i386" && !context.I386) continue;
-
-			if (arch == "x86_64" && context.ARM64 && !context.X86_64) continue;
-
-			if (arch == "arm64-sim" && !arm64Sim) continue;
+			if (arch == "x86_64" && (!context.X64 || !project.targetFlags.exists("simulator"))) continue;
 
 			var libExt = [
-				".iphoneos.a",
-				".iphoneos-v7.a",
-				".iphoneos-v7s.a",
 				".iphoneos-64.a",
-				".iphonesim.a",
-				".iphonesim-64.a",
 				".iphonesim-arm64.a",
+				".iphonesim-64.a"
 			][archID];
-
-			if (arch == 'arm64-sim') arch = 'arm64';
 
 			System.mkdir(projectDirectory + "/lib/" + arch);
 			System.mkdir(projectDirectory + "/lib/" + arch + "-debug");
@@ -912,28 +814,7 @@ class IOSPlatform extends PlatformTarget
 
 		System.mkdir(projectDirectory + "/assets");
 
-		for (asset in project.assets)
-		{
-			if (asset.type != AssetType.TEMPLATE)
-			{
-				var targetPath = Path.combine(projectDirectory + "/assets/", asset.resourceName);
-
-				// var sourceAssetPath:String = projectDirectory + "haxe/" + asset.sourcePath;
-
-				System.mkdir(Path.directory(targetPath));
-				AssetHelper.copyAssetIfNewer(asset, targetPath);
-
-				// System.mkdir (Path.directory (sourceAssetPath));
-				// System.linkFile (flatAssetPath, sourceAssetPath, true, true);
-			}
-			else
-			{
-				var targetPath = Path.combine(projectDirectory, asset.targetPath);
-
-				System.mkdir(Path.directory(targetPath));
-				AssetHelper.copyAsset(asset, targetPath, context);
-			}
-		}
+		copyProjectAssets(projectDirectory, "assets");
 
 		if (project.targetFlags.exists("xcode") && System.hostPlatform == MAC && command == "update")
 		{
@@ -960,26 +841,12 @@ class IOSPlatform extends PlatformTarget
 		context.HAS_LAUNCH_IMAGE = has_launch_image;
 
 	}*/
-	public override function watch():Void
-	{
-		var hxml = getDisplayHXML();
-		var dirs = hxml.getClassPaths(true);
 
-		var outputPath = Path.combine(Sys.getCwd(), project.app.path);
-		dirs = dirs.filter(function(dir)
-		{
-			return (!Path.startsWith(dir, outputPath));
-		});
+	public override function install():Void {}
 
-		var command = ProjectHelper.getCurrentCommand();
-		System.watch(command, dirs);
-	}
+	public override function trace():Void {}
 
-	@ignore public override function install():Void {}
-
-	@ignore public override function trace():Void {}
-
-	@ignore public override function uninstall():Void {}
+	public override function uninstall():Void {}
 }
 
 private typedef IconSize =

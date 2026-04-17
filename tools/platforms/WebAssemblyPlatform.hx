@@ -50,7 +50,6 @@ class WebAssemblyPlatform extends PlatformTarget
 				file: "MyApplication",
 				path: "bin",
 				preloader: "",
-				swfVersion: 17,
 				url: "",
 				init: null
 			};
@@ -61,7 +60,7 @@ class WebAssemblyPlatform extends PlatformTarget
 				height: 600,
 				parameters: "{}",
 				background: 0xFFFFFF,
-				fps: 30,
+				fps: 60,
 				hardware: true,
 				display: 0,
 				resizable: true,
@@ -70,7 +69,7 @@ class WebAssemblyPlatform extends PlatformTarget
 				orientation: Orientation.AUTO,
 				vsync: false,
 				fullscreen: false,
-				allowHighDPI: true,
+				allowHighDPI: false,
 				alwaysOnTop: false,
 				antialiasing: 0,
 				allowShaders: true,
@@ -83,9 +82,6 @@ class WebAssemblyPlatform extends PlatformTarget
 				hidden: false,
 				title: ""
 			};
-
-		defaults.window.fps = 60;
-		defaults.window.allowHighDPI = false;
 
 		for (i in 1...project.windows.length)
 		{
@@ -102,7 +98,7 @@ class WebAssemblyPlatform extends PlatformTarget
 
 	public override function build():Void
 	{
-		var sdkPath = null;
+		var sdkPath:String = null;
 
 		if (project.defines.exists("EMSCRIPTEN_SDK"))
 		{
@@ -331,14 +327,6 @@ class WebAssemblyPlatform extends PlatformTarget
 		}
 	}
 
-	public override function clean():Void
-	{
-		if (FileSystem.exists(targetDirectory))
-		{
-			System.removeDirectory(targetDirectory);
-		}
-	}
-
 	public override function deploy():Void
 	{
 		DeploymentHelper.deploy(project, targetFlags, targetDirectory, "WebAssembly");
@@ -356,7 +344,7 @@ class WebAssemblyPlatform extends PlatformTarget
 		}
 	}
 
-	private function getDisplayHXML():HXML
+	private override function getDisplayHXML():HXML
 	{
 		var path = targetDirectory + "/haxe/" + buildType + ".hxml";
 
@@ -395,40 +383,14 @@ class WebAssemblyPlatform extends PlatformTarget
 	{
 		AssetHelper.processLibraries(project, targetDirectory);
 
-		// project = project.clone ();
-
-		for (asset in project.assets)
-		{
-			if (asset.embed && asset.sourcePath == "")
-			{
-				var path = Path.combine(targetDirectory + "/obj/tmp", asset.targetPath);
-				System.mkdir(Path.directory(path));
-				AssetHelper.copyAsset(asset, path);
-				asset.sourcePath = path;
-			}
-		}
-
-		// for (asset in project.assets)
-		// {
-		// 	asset.resourceName = "assets/" + asset.resourceName;
-		// }
-
-		var destination = targetDirectory + "/bin/";
-		System.mkdir(destination);
-
-		// for (asset in project.assets) {
-		//
-		// if (asset.type == AssetType.FONT) {
-		//
-		// project.haxeflags.push (HTML5Helper.generateFontData (project, asset));
-		//
-		// }
-		//
-		// }
-
 		if (project.targetFlags.exists("xml"))
 		{
-			project.haxeflags.push("-xml " + targetDirectory + "/types.xml");
+			project.haxeflags.push("--xml " + targetDirectory + "/types.xml");
+		}
+
+		if (project.targetFlags.exists("json"))
+		{
+			project.haxeflags.push("--json " + targetDirectory + "/types.json");
 		}
 
 		var context = project.templateContext;
@@ -439,8 +401,6 @@ class WebAssemblyPlatform extends PlatformTarget
 		context.CPP_DIR = targetDirectory + "/obj";
 		context.USE_COMPRESSION = project.targetFlags.exists("compress");
 
-		context.favicons = [];
-
 		var icons = project.icons;
 
 		if (icons.length == 0)
@@ -448,11 +408,11 @@ class WebAssemblyPlatform extends PlatformTarget
 			icons = [new Icon(System.findTemplate(project.templatePaths, "default/icon.svg"))];
 		}
 
-		// if (IconHelper.createWindowsIcon (icons, Path.combine (destination, "favicon.ico"))) {
-		//
-		// context.favicons.push ({ rel: "icon", type: "image/x-icon", href: "./favicon.ico" });
-		//
-		// }
+		var destination = targetDirectory + "/bin/";
+
+		System.mkdir(destination);
+
+		context.favicons = [];
 
 		if (IconHelper.createIcon(icons, 192, 192, Path.combine(destination, "favicon.png")))
 		{
@@ -477,42 +437,20 @@ class WebAssemblyPlatform extends PlatformTarget
 			}
 		}
 
-		for (asset in project.assets)
-		{
-			var path = Path.combine(targetDirectory + "/obj/assets", asset.targetPath);
-
-			if (asset.type != AssetType.TEMPLATE)
-			{
-				// if (asset.type != AssetType.FONT) {
-
-				System.mkdir(Path.directory(path));
-				AssetHelper.copyAssetIfNewer(asset, path);
-
-				// }
-			}
-		}
-
 		ProjectHelper.recursiveSmartCopyTemplate(project, "webassembly/template", destination, context);
 		ProjectHelper.recursiveSmartCopyTemplate(project, "haxe", targetDirectory + "/haxe", context);
 		ProjectHelper.recursiveSmartCopyTemplate(project, "webassembly/hxml", targetDirectory + "/haxe", context);
-		// ProjectHelper.recursiveSmartCopyTemplate(project, "webassembly/cpp", targetDirectory + "/obj", context);
 		ProjectHelper.recursiveSmartCopyTemplate(project, "cpp/static", targetDirectory + "/obj", context);
 
-		for (asset in project.assets)
-		{
-			var path = Path.combine(destination, asset.targetPath);
-
-			if (asset.type == AssetType.TEMPLATE)
-			{
-				System.mkdir(Path.directory(path));
-				AssetHelper.copyAsset(asset, path, context);
-			}
-		}
+		copyProjectAssets(destination, targetDirectory + "/obj/assets");
 	}
 
-	@ignore public override function install():Void {}
+	public override function install():Void {}
 
-	@ignore public override function trace():Void {}
+	public override function trace():Void {}
 
-	@ignore public override function uninstall():Void {}
+	public override function uninstall():Void {}
+
+	// TODO: remove this line to enable watching?
+	public override function watch():Void {}
 }

@@ -4,6 +4,7 @@ package lime.media.openal;
 import lime._internal.backend.native.NativeCFFI;
 import lime.system.CFFI;
 import lime.system.CFFIPointer;
+import haxe.io.Bytes;
 
 #if !lime_debug
 @:fileXml('tags="haxe,release"')
@@ -33,6 +34,11 @@ class ALC
 	public static inline var ENUMERATE_ALL_EXT:Int = 1;
 	public static inline var DEFAULT_ALL_DEVICES_SPECIFIER:Int = 0x1012;
 	public static inline var ALL_DEVICES_SPECIFIER:Int = 0x1013;
+	public static inline var CAPTURE_DEVICE_SPECIFIER:Int = 0x310;
+	public static inline var CAPTURE_DEFAULT_DEVICE_SPECIFIER:Int = 0x311;
+	public static inline var CAPTURE_SAMPLES:Int = 0x312;
+	#if lime_openalsoft
+	/* ALC_SOFT_system_events */
 	public static inline var PLAYBACK_DEVICE_SOFT:Int = 0x19D4;
 	public static inline var CAPTURE_DEVICE_SOFT:Int = 0x19D5;
 	public static inline var EVENT_TYPE_DEFAULT_DEVICE_CHANGED_SOFT:Int = 0x19D6;
@@ -40,6 +46,11 @@ class ALC
 	public static inline var EVENT_TYPE_DEVICE_REMOVED_SOFT:Int = 0x19D8;
 	public static inline var EVENT_SUPPORTED_SOFT:Int = 0x19D9;
 	public static inline var EVENT_NOT_SUPPORTED_SOFT:Int = 0x19DA;
+	/* ALC_SOFT_device_clock */
+	public static inline var DEVICE_CLOCK_SOFT:Int = 0x1600;
+	public static inline var DEVICE_LATENCY_SOFT:Int = 0x1601;
+	public static inline var DEVICE_CLOCK_LATENCY_SOFT:Int = 0x1602;
+	#end
 
 	public static function closeDevice(device:ALDevice):Bool
 	{
@@ -159,6 +170,31 @@ class ALC
 		#end
 	}
 
+	public static function getStringList(device:ALDevice, param:Int):Array<String>
+	{
+		#if (lime_cffi && lime_openal && !macro)
+		if (param == DEVICE_SPECIFIER ||
+			param == ALL_DEVICES_SPECIFIER)
+		{
+			var result = NativeCFFI.lime_alc_get_string_list(device, param);
+			#if hl
+			if (result == null) return [];
+			var _result = [];
+			for (i in 0...result.length)
+				_result[i] = CFFI.stringValue(result[i]);
+			return _result;
+			#else
+			return result;
+			#end
+
+		}
+
+		return [getString(device, param)];
+		#else
+		return null;
+		#end
+	}
+
 	public static function makeContextCurrent(context:ALContext):Bool
 	{
 		#if (lime_cffi && lime_openal && !macro)
@@ -221,7 +257,7 @@ class ALC
 
 	public static function eventControlSOFT(events:Array<Int>, enable:Bool):Void
 	{
-		#if (lime_cffi && lime_openal && !macro)
+		#if (lime_cffi && lime_openalsoft && !macro)
 		#if hl
 		var _events = null;
 		if (events != null)
@@ -238,14 +274,14 @@ class ALC
 
 	public static function eventCallbackSOFT(callback:Dynamic):Void
 	{
-		#if (lime_cffi && lime_openal && !macro)
+		#if (lime_cffi && lime_openalsoft && !macro)
 		NativeCFFI.lime_alc_event_callback_soft(callback);
 		#end
 	}
 
 	public static function reopenDeviceSOFT(device:ALDevice, newDeviceName:String, attributes:Array<Int>):Bool
 	{
-		#if (lime_cffi && lime_openal && !macro)
+		#if (lime_cffi && lime_openalsoft && !macro)
 		#if hl
 		var _attributes = null;
 		if (attributes != null)
@@ -259,6 +295,50 @@ class ALC
 		return NativeCFFI.lime_alc_reopen_device_soft(device, newDeviceName, attributes);
 		#else
 		return false;
+		#end
+	}
+
+	public static function captureOpenDevice(deviceName:String, frequency:Int, format:Int, bufferSize:Int):ALDevice
+	{
+		#if (lime_cffi && lime_openal && !macro)
+		var handle = NativeCFFI.lime_alc_capture_open_device(deviceName, frequency, format, bufferSize);
+
+		if (handle != null)
+		{
+			return new ALDevice(handle);
+		}
+		#end
+
+		return null;
+	}
+
+	public static function captureCloseDevice(device:ALDevice):Bool
+	{
+		#if (lime_cffi && lime_openal && !macro)
+		return NativeCFFI.lime_alc_capture_close_device(device);
+		#end
+
+		return false;
+	}
+
+	public static function captureStart(device:ALDevice):Void
+	{
+		#if (lime_cffi && lime_openal && !macro)
+		NativeCFFI.lime_alc_capture_start(device);
+		#end
+	}
+
+	public static function captureStop(device:ALDevice):Void
+	{
+		#if (lime_cffi && lime_openal && !macro)
+		NativeCFFI.lime_alc_capture_stop(device);
+		#end
+	}
+
+	public static function captureSamples(device:ALDevice, buffer:Bytes, samples:Int):Void
+	{
+		#if (lime_cffi && lime_openal && !macro)
+		NativeCFFI.lime_alc_capture_samples(device, buffer, samples);
 		#end
 	}
 }

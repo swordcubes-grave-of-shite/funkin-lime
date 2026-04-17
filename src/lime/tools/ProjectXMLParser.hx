@@ -256,17 +256,6 @@ class ProjectXMLParser extends HXProject
 				case "path":
 					app.path = Path.combine(extensionPath, substitute(element.att.path));
 
-				case "min-swf-version":
-					var version = Std.parseFloat(substitute(element.att.resolve("min-swf-version")));
-
-					if (version > app.swfVersion)
-					{
-						app.swfVersion = version;
-					}
-
-				case "swf-version":
-					app.swfVersion = Std.parseFloat(substitute(element.att.resolve("swf-version")));
-
 				case "preloader":
 					app.preloader = substitute(element.att.preloader);
 
@@ -297,11 +286,11 @@ class ProjectXMLParser extends HXProject
 	{
 		var path = "";
 		var embed:Null<Bool> = null;
-		var library = null;
+		var library:String = null;
 		var targetPath = "";
-		var glyphs = null;
-		var deliveryPackName = '';
-		var type = null;
+		var glyphs:String = null;
+		var deliveryPackName:String = '';
+		var type:AssetType = null;
 
 		if (element.has.path)
 		{
@@ -541,6 +530,7 @@ class ProjectXMLParser extends HXProject
 					}
 
 					asset.deliveryPackName = childDeliveryPackName;
+
 					assets.push(asset);
 				}
 			}
@@ -830,11 +820,6 @@ class ProjectXMLParser extends HXProject
 		{
 			app.path = Path.combine(extensionPath, substitute(element.att.path));
 		}
-
-		if (element.has.resolve("swf-version"))
-		{
-			app.swfVersion = Std.parseFloat(substitute(element.att.resolve("swf-version")));
-		}
 	}
 
 	private function parseXML(xml:Access, section:String, extensionPath:String = ""):Void
@@ -857,7 +842,6 @@ class ProjectXMLParser extends HXProject
 					switch (name)
 					{
 						case "BUILD_DIR": app.path = value;
-						case "SWF_VERSION": app.swfVersion = Std.parseFloat(value);
 						case "PRERENDERED_ICON": config.set("ios.prerenderedIcon", value);
 						case "ANDROID_INSTALL_LOCATION": config.set("android.install-location", value);
 					}
@@ -965,7 +949,7 @@ class ProjectXMLParser extends HXProject
 				case "include":
 					var path = "";
 					var addSourcePath = true;
-					var haxelib = null;
+					var haxelib:Haxelib = null;
 
 					if (element.has.haxelib)
 					{
@@ -1062,7 +1046,7 @@ class ProjectXMLParser extends HXProject
 					var name = substitute(element.att.name);
 					var version = "";
 					var optional = false;
-					var path = null;
+					var path:String = null;
 
 					if (element.has.version)
 					{
@@ -1142,10 +1126,10 @@ class ProjectXMLParser extends HXProject
 
 				case "ndll":
 					var name = substitute(element.att.name);
-					var haxelib = null;
+					var haxelib:Haxelib = null;
 					var staticLink:Null<Bool> = null;
 					var registerStatics = true;
-					var subdirectory = null;
+					var subdirectory:String = null;
 
 					if (element.has.haxelib)
 					{
@@ -1183,21 +1167,45 @@ class ProjectXMLParser extends HXProject
 				case "architecture":
 					if (element.has.name)
 					{
-						var name = substitute(element.att.name);
+						var name = new Architecture(substitute(element.att.name));
 
-						if (Reflect.hasField(Architecture, name.toUpperCase()))
+						if (name != null)
 						{
-							ArrayTools.addUnique(architectures, Reflect.field(Architecture, name.toUpperCase()));
+							ArrayTools.addUnique(architectures, name);
+						}
+						else if (name.toLowerCase() == "x86_64")
+						{
+							ArrayTools.addUnique(architectures, Architecture.X64);
+						}
+						else if (name.toLowerCase() == "x86_32")
+						{
+							ArrayTools.addUnique(architectures, Architecture.X86);
+						}
+						else
+						{
+							Log.warn("Ignoring unknown architecture: " + name);
 						}
 					}
 
 					if (element.has.exclude)
 					{
-						var exclude = substitute(element.att.exclude);
+						var exclude = new Architecture(substitute(element.att.exclude));
 
-						if (Reflect.hasField(Architecture, exclude.toUpperCase()))
+						if (exclude != null)
 						{
-							ArrayTools.addUnique(excludeArchitectures, Reflect.field(Architecture, exclude.toUpperCase()));
+							ArrayTools.addUnique(excludeArchitectures, exclude);
+						}
+						else if (exclude.toLowerCase() == "x86_64")
+						{
+							ArrayTools.addUnique(excludeArchitectures, Architecture.X64);
+						}
+						else if (exclude.toLowerCase() == "x86_32")
+						{
+							ArrayTools.addUnique(excludeArchitectures, Architecture.X86);
+						}
+						else
+						{
+							Log.warn("Ignoring unknown architecture: " + exclude);
 						}
 					}
 
@@ -1481,9 +1489,9 @@ class ProjectXMLParser extends HXProject
 					}
 					else
 					{
-						var path = null;
+						var path:String = null;
 						var name = "";
-						var type = null;
+						var type:String = null;
 						var embed:Null<Bool> = null;
 						var preload = false;
 						var generate = false;
@@ -1701,7 +1709,9 @@ class ProjectXMLParser extends HXProject
 
 					while (i-- > 0)
 					{
-						if ((name != "" && dependencies[i].name == name) || (path != "" && dependencies[i].path == path))
+						if ((name != "" && path != "" && dependencies[i].name == name && dependencies[i].path == path)
+							|| (name != "" && path == "" && dependencies[i].name == name)
+							|| (name == "" && path != "" && dependencies[i].path == path))
 						{
 							dependencies.splice(i, 1);
 						}
@@ -2021,7 +2031,7 @@ class ProjectXMLParser extends HXProject
 
 	public function process(projectFile:String, useExtensionPath:Bool):Void
 	{
-		var xml = null;
+		var xml:Access = null;
 		var extensionPath = "";
 
 		try

@@ -13,9 +13,6 @@ import lime.tools.AssetType;
 import lime.tools.CPPHelper;
 import lime.tools.DeploymentHelper;
 import lime.tools.HXProject;
-import lime.tools.JavaHelper;
-import lime.tools.NekoHelper;
-import lime.tools.NodeJSHelper;
 import lime.tools.Orientation;
 import lime.tools.Platform;
 import lime.tools.PlatformTarget;
@@ -56,7 +53,6 @@ class LinuxPlatform extends PlatformTarget
 				file: "MyApplication",
 				path: "bin",
 				preloader: "",
-				swfVersion: 17,
 				url: "",
 				init: null
 			};
@@ -67,7 +63,7 @@ class LinuxPlatform extends PlatformTarget
 				height: 600,
 				parameters: "{}",
 				background: 0xFFFFFF,
-				fps: 30,
+				fps: 60,
 				hardware: true,
 				display: 0,
 				resizable: true,
@@ -76,7 +72,7 @@ class LinuxPlatform extends PlatformTarget
 				orientation: Orientation.AUTO,
 				vsync: false,
 				fullscreen: false,
-				allowHighDPI: true,
+				allowHighDPI: false,
 				alwaysOnTop: false,
 				antialiasing: 0,
 				allowShaders: true,
@@ -106,8 +102,6 @@ class LinuxPlatform extends PlatformTarget
 				defaults.architectures = [];
 		}
 
-		defaults.window.allowHighDPI = false;
-
 		for (i in 1...project.windows.length)
 		{
 			defaults.windows.push(defaults.window);
@@ -133,11 +127,7 @@ class LinuxPlatform extends PlatformTarget
 			}
 		}
 
-		if (project.targetFlags.exists("neko"))
-		{
-			targetType = "neko";
-		}
-		else if (project.targetFlags.exists("hl") || targetFlags.exists("hlc"))
+		if (project.targetFlags.exists("hl") || targetFlags.exists("hlc"))
 		{
 			targetType = "hl";
 			is64 = true;
@@ -154,14 +144,6 @@ class LinuxPlatform extends PlatformTarget
 					project.haxedefs.set("hl-ver", HashlinkHelper.BUNDLED_HL_VER);
 				}
 			}
-		}
-		else if (project.targetFlags.exists("nodejs"))
-		{
-			targetType = "nodejs";
-		}
-		else if (project.targetFlags.exists("java"))
-		{
-			targetType = "java";
 		}
 		else
 		{
@@ -186,38 +168,31 @@ class LinuxPlatform extends PlatformTarget
 
 		System.mkdir(targetDirectory);
 
-		if (!project.targetFlags.exists("static") || targetType != "cpp")
+		for (dependency in project.dependencies)
 		{
-			var targetSuffix = (targetType == "hl") ? ".hdll" : null;
-
-			for (ndll in project.ndlls)
+			if (StringTools.endsWith(dependency.path, ".so"))
 			{
-				// TODO: Support single binary for HashLink
-				if (targetType == "hl")
-				{
-					ProjectHelper.copyLibrary(project, ndll, "Linux" + (is64 ? "64" : ""), "", ".hdll", applicationDirectory, project.debug, targetSuffix);
-				}
-				else
-				{
-					ProjectHelper.copyLibrary(project, ndll, "Linux" + (( System.hostArchitecture == ARMV7 || System.hostArchitecture == ARM64)?"Arm":"") + (is64 ? "64" : ""), "",
-						(ndll.haxelib != null
-							&& (ndll.haxelib.name == "hxcpp" || ndll.haxelib.name == "hxlibc")) ? ".dll" : ".ndll", applicationDirectory,
-						project.debug, targetSuffix);
-				}
+				copyIfNewer(dependency.path, applicationDirectory + "/" + Path.withoutDirectory(dependency.path));
+			}
+			else
+			{
+				copyIfNewer(Path.combine(dependency.path, "Linux" + (( System.hostArchitecture == ARMV7 || System.hostArchitecture == ARM64)?"Arm":"") + (is64 ? "64" : "") + "/" + dependency.name + ".so"), applicationDirectory + "/" + dependency.name + ".so");
 			}
 		}
 
-		if (targetType == "neko")
+		for (ndll in project.ndlls)
 		{
-			System.runCommand("", "haxe", [hxml]);
-
-			if (noOutput) return;
-
-			NekoHelper.createExecutable(project.templatePaths, "linux" + (( System.hostArchitecture == ARMV7 || System.hostArchitecture == ARM64)?"Arm":"") + (is64 ? "64" : ""), targetDirectory + "/obj/ApplicationMain.n", executablePath);
-			NekoHelper.copyLibraries(project.templatePaths, "linux" + (is64 ? "64" : ""), applicationDirectory);
-
+			if (targetType == "hl")
+			{
+				ProjectHelper.copyLibrary(project, ndll, "Linux" + (is64 ? "64" : ""), "", ".hdll", applicationDirectory, project.debug, ".hdll");
+			}
+			else
+			{
+				ProjectHelper.copyLibrary(project, ndll, "Linux" + (( System.hostArchitecture == ARMV7 || System.hostArchitecture == ARM64)?"Arm":"") + (is64 ? "64" : ""), "", ".ndll", applicationDirectory, project.debug);
+			}
 		}
-		else if (targetType == "hl")
+
+		if (targetType == "hl")
 		{
 			System.runCommand("", "haxe", [hxml]);
 
@@ -243,41 +218,10 @@ class LinuxPlatform extends PlatformTarget
 				System.runCommand("", command.shift(), command);
 			}
 		}
-		else if (targetType == "nodejs")
-		{
-			System.runCommand("", "haxe", [hxml]);
-			// NekoHelper.createExecutable (project.templatePaths, "linux" + (is64 ? "64" : ""), targetDirectory + "/obj/ApplicationMain.n", executablePath);
-			// NekoHelper.copyLibraries (project.templatePaths, "linux" + (is64 ? "64" : ""), applicationDirectory);
-		}
-		else if (targetType == "java")
-		{
-			var libPath = Path.combine(Haxelib.getPath(new Haxelib("lime")), "templates/java/lib/");
-
-			System.runCommand("", "haxe", [hxml, "-java-lib", libPath + "disruptor.jar", "-java-lib", libPath + "lwjgl.jar"]);
-			// System.runCommand ("", "haxe", [ hxml ]);
-
-			if (noOutput) return;
-
-			var haxeVersion = project.environment.get("haxe_ver");
-			var haxeVersionString = "3404";
-
-			if (haxeVersion.length > 4)
-			{
-				haxeVersionString = haxeVersion.charAt(0)
-					+ haxeVersion.charAt(2)
-					+ (haxeVersion.length == 5 ? "0" + haxeVersion.charAt(4) : haxeVersion.charAt(4) + haxeVersion.charAt(5));
-			}
-
-			System.runCommand(targetDirectory + "/obj", "haxelib", ["run", "hxjava", "hxjava_build.txt", "--haxe-version", haxeVersionString]);
-			System.recursiveCopy(targetDirectory + "/obj/lib", Path.combine(applicationDirectory, "lib"));
-			System.copyFile(targetDirectory + "/obj/ApplicationMain" + (project.debug ? "-Debug" : "") + ".jar",
-				Path.combine(applicationDirectory, project.app.file + ".jar"));
-			JavaHelper.copyLibraries(project.templatePaths, "Linux" + (is64 ? "64" : ""), applicationDirectory);
-		}
 		else
 		{
-			var haxeArgs = [hxml];
-			var flags = [];
+			var haxeArgs:Array<String> = [hxml];
+			var flags:Array<String> = [];
 
 			if (is64)
 			{
@@ -354,40 +298,18 @@ class LinuxPlatform extends PlatformTarget
 				flags.push('-DHXCPP_XLINUX32_AR=$hxcpp_xlinux32_ar');
 			}
 
-			if (!project.targetFlags.exists("static"))
-			{
-				System.runCommand("", "haxe", haxeArgs);
+			System.runCommand("", "haxe", haxeArgs);
 
-				if (noOutput) return;
+			if (noOutput) return;
 
-				CPPHelper.compile(project, targetDirectory + "/obj", flags);
+			CPPHelper.compile(project, targetDirectory + "/obj", flags);
 
-				System.copyFile(targetDirectory + "/obj/ApplicationMain" + (project.debug ? "-debug" : ""), executablePath);
-			}
-			else
-			{
-				System.runCommand("", "haxe", haxeArgs.concat(["-D", "static_link"]));
-
-				if (noOutput) return;
-
-				CPPHelper.compile(project, targetDirectory + "/obj", flags.concat(["-Dstatic_link"]));
-				CPPHelper.compile(project, targetDirectory + "/obj", flags, "BuildMain.xml");
-
-				System.copyFile(targetDirectory + "/obj/Main" + (project.debug ? "-debug" : ""), executablePath);
-			}
+			System.copyFile(targetDirectory + "/obj/ApplicationMain" + (project.debug ? "-debug" : ""), executablePath);
 		}
 
-		if (System.hostPlatform != WINDOWS && (targetType != "nodejs" && targetType != "java"))
+		if (System.hostPlatform != WINDOWS)
 		{
 			System.runCommand("", "chmod", ["755", executablePath]);
-		}
-	}
-
-	public override function clean():Void
-	{
-		if (FileSystem.exists(targetDirectory))
-		{
-			System.removeDirectory(targetDirectory);
 		}
 	}
 
@@ -410,8 +332,6 @@ class LinuxPlatform extends PlatformTarget
 
 	private function generateContext():Dynamic
 	{
-		// var project = project.clone ();
-
 		if(targetFlags.exists('rpi'))
 		{
 			project.haxedefs.set("rpi", 1);
@@ -429,7 +349,7 @@ class LinuxPlatform extends PlatformTarget
 		return context;
 	}
 
-	private function getDisplayHXML():HXML
+	private override function getDisplayHXML():HXML
 	{
 		var path = targetDirectory + "/haxe/" + buildType + ".hxml";
 
@@ -451,12 +371,6 @@ class LinuxPlatform extends PlatformTarget
 			{
 				case "hl":
 					hxml.hl = "_.hl";
-				case "neko":
-					hxml.neko = "_.n";
-				case "java":
-					hxml.java = "_";
-				case "nodejs":
-					hxml.js = "_.js";
 				default:
 					hxml.cpp = "_";
 			}
@@ -467,9 +381,9 @@ class LinuxPlatform extends PlatformTarget
 
 	public override function rebuild():Void
 	{
-		var commands = [];
+		var commands:Array<Array<String>> = [];
 
-		if (System.hostArchitecture == ARM64 )
+		if (targetFlags.exists('rpi') && System.hostArchitecture == ARM64 )
 		{
 			commands.push([
 				"-Dlinux",
@@ -483,7 +397,7 @@ class LinuxPlatform extends PlatformTarget
 				"-DHXCPP_RANLIB=aarch64-linux-gnu-ranlib"
 			]);
 		}
-		else if (System.hostArchitecture == ARMV7)
+		else if (targetFlags.exists('rpi') && System.hostArchitecture == ARMV7)
 		{
 			commands.push([
 				"-Dlinux",
@@ -502,14 +416,32 @@ class LinuxPlatform extends PlatformTarget
 			// TODO: Support single binary
 			commands.push(["-Dlinux", "-DHXCPP_M64", "-Dhashlink"]);
 		}
+		else if (System.hostArchitecture == ARM64 )
+		{
+			commands.push([
+				"-Dlinux",
+				"-Dtoolchain=linux",
+				"-DBINDIR=LinuxArm64",
+				"-DHXCPP_ARM64",
+			]);
+		}
 		else
 		{
-			if (!targetFlags.exists("32") && !targetFlags.exists("x86_32") && System.hostArchitecture == X64)
+			var x86_64:Bool = targetFlags.exists("64") || targetFlags.exists("x86_64");
+			var x86_32:Bool = targetFlags.exists("32") || targetFlags.exists("x86_32");
+
+			if (!x86_64 && !x86_32)
+			{
+				x86_64 = System.hostArchitecture == X64;
+				x86_32 = System.hostArchitecture == X86;
+			}
+
+			if (x86_64)
 			{
 				commands.push(["-Dlinux", "-DHXCPP_M64"]);
 			}
 
-			if (!targetFlags.exists("64") && !targetFlags.exists("x86_64") && (command == "rebuild" || System.hostArchitecture == X86))
+			if (x86_32)
 			{
 				commands.push(["-Dlinux", "-DHXCPP_M32"]);
 			}
@@ -532,15 +464,7 @@ class LinuxPlatform extends PlatformTarget
 			arguments.push("-verbose");
 		}
 
-		if (targetType == "nodejs")
-		{
-			NodeJSHelper.run(project, targetDirectory + "/bin/ApplicationMain.js", arguments);
-		}
-		else if (targetType == "java")
-		{
-			System.runCommand(applicationDirectory, "java", ["-jar", project.app.file + ".jar"].concat(arguments));
-		}
-		else if (project.target == System.hostPlatform)
+		if (project.target == System.hostPlatform)
 		{
 			arguments = arguments.concat(["-livereload"]);
 			System.runCommand(applicationDirectory, "./" + Path.withoutDirectory(executablePath), arguments);
@@ -551,95 +475,33 @@ class LinuxPlatform extends PlatformTarget
 	{
 		AssetHelper.processLibraries(project, targetDirectory);
 
-		// project = project.clone ();
-		// initialize (project);
-
-		for (asset in project.assets)
-		{
-			if (asset.embed && asset.sourcePath == "")
-			{
-				var path = Path.combine(targetDirectory + "/obj/tmp", asset.targetPath);
-				System.mkdir(Path.directory(path));
-				AssetHelper.copyAsset(asset, path);
-				asset.sourcePath = path;
-			}
-		}
-
 		if (project.targetFlags.exists("xml"))
 		{
-			project.haxeflags.push("-xml " + targetDirectory + "/types.xml");
+			project.haxeflags.push("--xml " + targetDirectory + "/types.xml");
+		}
+
+		if (project.targetFlags.exists("json"))
+		{
+			project.haxeflags.push("--json " + targetDirectory + "/types.json");
 		}
 
 		var context = generateContext();
 		context.OUTPUT_DIR = targetDirectory;
-
-		if (targetType == "cpp" && project.targetFlags.exists("static"))
-		{
-			for (i in 0...project.ndlls.length)
-			{
-				var ndll = project.ndlls[i];
-
-				if (ndll.path == null || ndll.path == "")
-				{
-					context.ndlls[i].path = NDLL.getLibraryPath(ndll, "Linux" + (( System.hostArchitecture == ARMV7 || System.hostArchitecture == ARM64) ? "Arm" : "") + (is64 ? "64" : ""), "lib", ".a", project.debug);
-				}
-			}
-		}
 
 		System.mkdir(targetDirectory);
 		System.mkdir(targetDirectory + "/obj");
 		System.mkdir(targetDirectory + "/haxe");
 		System.mkdir(applicationDirectory);
 
-		// SWFHelper.generateSWFClasses (project, targetDirectory + "/haxe");
-
 		ProjectHelper.recursiveSmartCopyTemplate(project, "haxe", targetDirectory + "/haxe", context);
 		ProjectHelper.recursiveSmartCopyTemplate(project, targetType + "/hxml", targetDirectory + "/haxe", context);
 
-		if (targetType == "cpp" && project.targetFlags.exists("static"))
-		{
-			ProjectHelper.recursiveSmartCopyTemplate(project, "cpp/static", targetDirectory + "/obj", context);
-		}
-
-		// context.HAS_ICON = IconHelper.createIcon (project.icons, 256, 256, Path.combine (applicationDirectory, "icon.png"));
-		for (asset in project.assets)
-		{
-			var path = Path.combine(applicationDirectory, asset.targetPath);
-
-			if (asset.embed != true)
-			{
-				if (asset.type != AssetType.TEMPLATE)
-				{
-					System.mkdir(Path.directory(path));
-					AssetHelper.copyAssetIfNewer(asset, path);
-				}
-				else
-				{
-					System.mkdir(Path.directory(path));
-					AssetHelper.copyAsset(asset, path, context);
-				}
-			}
-		}
+		copyProjectAssets(applicationDirectory);
 	}
 
-	public override function watch():Void
-	{
-		var hxml = getDisplayHXML();
-		var dirs = hxml.getClassPaths(true);
+	public override function install():Void {}
 
-		var outputPath = Path.combine(Sys.getCwd(), project.app.path);
-		dirs = dirs.filter(function(dir)
-		{
-			return (!Path.startsWith(dir, outputPath));
-		});
+	public override function trace():Void {}
 
-		var command = ProjectHelper.getCurrentCommand();
-		System.watch(command, dirs);
-	}
-
-	@ignore public override function install():Void {}
-
-	@ignore public override function trace():Void {}
-
-	@ignore public override function uninstall():Void {}
+	public override function uninstall():Void {}
 }

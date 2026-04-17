@@ -16,13 +16,7 @@ import lime.net.HTTPRequestMethod;
 import lime.system.ThreadPool;
 import lime.system.WorkOutput;
 #if sys
-#if haxe4
 import sys.thread.Deque;
-#elseif cpp
-import cpp.vm.Deque;
-#elseif neko
-import neko.vm.Deque;
-#end
 import sys.FileSystem;
 #end
 
@@ -39,7 +33,7 @@ class NativeHTTPRequest
 	private static var multiProgressTimer:Timer;
 	private static var multiThreadPool:ThreadPool;
 	private static var multiThreadPoolRunning:Bool;
-	#if (cpp || neko || hl)
+	#if (cpp || hl)
 	private static var multiAddHandle:Deque<CURL>;
 	#end
 	private static var cookieList:Array<String>;
@@ -308,7 +302,7 @@ class NativeHTTPRequest
 				activeInstances.push(this);
 				multiInstances.set(curl, this);
 
-				#if (cpp || neko || hl)
+				#if (cpp || hl)
 				if (multiAddHandle == null) multiAddHandle = new Deque<CURL>();
 				multiAddHandle.add(curl);
 				#end
@@ -497,7 +491,7 @@ class NativeHTTPRequest
 	{
 		while (true)
 		{
-			#if (cpp || neko || hl)
+			#if (cpp || hl)
 			var curl = multiAddHandle.pop(false);
 			if (curl != null) multi.addHandle(curl);
 			#end
@@ -535,7 +529,7 @@ class NativeHTTPRequest
 
 	private static function multiThreadPool_onComplete(_):Void
 	{
-		#if (cpp || neko || hl)
+		#if (cpp || hl)
 		var curl = multiAddHandle.pop(false);
 
 		if (curl != null)

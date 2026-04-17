@@ -1,18 +1,19 @@
 package lime.media;
 
-import haxe.Timer;
-import lime._internal.backend.native.NativeCFFI;
-import lime.media.openal.AL;
-import lime.media.openal.ALC;
-import lime.media.openal.ALDevice;
 import lime.system.CFFIPointer;
-import lime.utils.MainLoop;
+import haxe.MainLoop;
 #if (windows || mac || linux || android || ios)
 import haxe.io.Path;
 import lime.system.System;
 import sys.FileSystem;
 import sys.io.File;
 #end
+import haxe.Timer;
+import lime._internal.backend.native.NativeCFFI;
+import lime.media.openal.AL;
+import lime.media.openal.ALC;
+import lime.media.openal.ALDevice;
+import lime.app.Application;
 #if (js && html5)
 import js.Browser;
 #end
@@ -46,26 +47,24 @@ class AudioManager
 
 					var alc = context.openal;
 					var device = alc.openDevice();
-					var ctx = alc.createContext(device);
-
-					alc.makeContextCurrent(ctx);
-					alc.processContext(ctx);
-
-					#if !mobile
-					if (alc.isExtensionPresent('ALC_SOFT_system_events', device)
-						&& alc.isExtensionPresent('ALC_SOFT_reopen_device', device))
+					if (device != null)
 					{
-						alc.disable(AL.STOP_SOURCES_ON_DISCONNECT_SOFT);
+						var ctx = alc.createContext(device);
+						alc.makeContextCurrent(ctx);
+						alc.processContext(ctx);
 
-						alc.eventControlSOFT([
-							ALC.EVENT_TYPE_DEFAULT_DEVICE_CHANGED_SOFT,
-							ALC.EVENT_TYPE_DEVICE_ADDED_SOFT,
-							ALC.EVENT_TYPE_DEVICE_REMOVED_SOFT
-						], true);
+						#if (lime_openalsoft && !mobile)
+						if (alc.isExtensionPresent('ALC_SOFT_system_events', device) && alc.isExtensionPresent('ALC_SOFT_reopen_device', device))
+						{
+							if (alc.isExtensionPresent('AL_SOFT_hold_on_disconnect'))
+								alc.disable(AL.STOP_SOURCES_ON_DISCONNECT_SOFT);
 
-						alc.eventCallbackSOFT(deviceEventCallback);
+							alc.eventControlSOFT([ALC.EVENT_TYPE_DEFAULT_DEVICE_CHANGED_SOFT, ALC.EVENT_TYPE_DEVICE_ADDED_SOFT, ALC.EVENT_TYPE_DEVICE_REMOVED_SOFT], true);
+
+							alc.eventCallbackSOFT(deviceEventCallback);
+						}
+						#end
 					}
-					#end
 				}
 				#end
 			}
@@ -139,6 +138,7 @@ class AudioManager
 		#end
 	}
 
+	#if lime_openalsoft
 	@:noCompletion
 	private static function deviceEventCallback(eventType:Int, deviceType:Int, handle:CFFIPointer, message:#if hl hl.Bytes #else String #end):Void
 	{
@@ -158,9 +158,7 @@ class AudioManager
 					var device = alc.getContextsDevice(currentContext);
 
 					if (device != null)
-					{
 						alc.reopenDeviceSOFT(device, null, null);
-					}
 				}
 				else
 				{
@@ -170,6 +168,7 @@ class AudioManager
 		}
 		#end
 	}
+	#end
 
 	@:noCompletion
 	private static function setupConfig():Void

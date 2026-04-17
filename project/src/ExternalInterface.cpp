@@ -26,6 +26,7 @@
 #include <system/FileWatcher.h>
 #include <system/JNI.h>
 #include <system/Locale.h>
+#include <system/OrientationEvent.h>
 #include <system/SensorEvent.h>
 #include <system/System.h>
 #include <text/Font.h>
@@ -46,7 +47,6 @@
 #include <ui/WindowEvent.h>
 #include <utils/compress/LZMA.h>
 #include <utils/compress/Zlib.h>
-#include <vm/NekoVM.h>
 
 #ifdef HX_WINDOWS
 #include <locale>
@@ -203,67 +203,6 @@ namespace lime {
 	}
 
 
-	std::wstring* hxstring_to_wstring (HxString val) {
-
-		if (val.c_str ()) {
-
-			#ifdef HX_WINDOWS
-			return new std::wstring (hxs_wchar (val, nullptr));
-			#else
-			const std::string _val (hxs_utf8 (val, nullptr));
-			return new std::wstring (_val.begin (), _val.end ());
-			#endif
-
-		} else {
-
-			return 0;
-
-		}
-
-	}
-
-
-	std::wstring* hxstring_to_wstring (hl_vstring* val) {
-
-		if (val) {
-
-			std::string _val = std::string (hl_to_utf8 (val->bytes));
-			#ifdef HX_WINDOWS
-			std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-			return new std::wstring (converter.from_bytes (_val));
-			#else
-			return new std::wstring (_val.begin (), _val.end ());
-			#endif
-
-		} else {
-
-			return 0;
-
-		}
-
-	}
-
-
-	value wstring_to_value (std::wstring* val) {
-
-		if (val) {
-
-			#ifdef HX_WINDOWS
-			return alloc_wstring (val->c_str ());
-			#else
-			std::string _val = std::string (val->begin (), val->end ());
-			return alloc_string (_val.c_str ());
-			#endif
-
-		} else {
-
-			return 0;
-
-		}
-
-	}
-
-
 	value lime_application_create () {
 
 		Application* application = CreateApplication ();
@@ -385,6 +324,7 @@ namespace lime {
 
 		bytes.Set (data);
 		resource = Resource (&bytes);
+
 
 		if (WAV::Decode (&resource, &audioBuffer)) {
 
@@ -1387,6 +1327,54 @@ namespace lime {
 	}
 
 
+	int lime_font_get_strikethrough_position (value fontHandle) {
+
+		#ifdef LIME_FREETYPE
+		Font *font = (Font*)val_data (fontHandle);
+		return font->GetStrikethroughPosition ();
+		#else
+		return 0;
+		#endif
+
+	}
+
+
+	HL_PRIM int HL_NAME(hl_font_get_strikethrough_position) (HL_CFFIPointer* fontHandle) {
+
+		#ifdef LIME_FREETYPE
+		Font *font = (Font*)fontHandle->ptr;
+		return font->GetStrikethroughPosition ();
+		#else
+		return 0;
+		#endif
+
+	}
+
+
+	int lime_font_get_strikethrough_thickness (value fontHandle) {
+
+		#ifdef LIME_FREETYPE
+		Font *font = (Font*)val_data (fontHandle);
+		return font->GetStrikethroughThickness ();
+		#else
+		return 0;
+		#endif
+
+	}
+
+
+	HL_PRIM int HL_NAME(hl_font_get_strikethrough_thickness) (HL_CFFIPointer* fontHandle) {
+
+		#ifdef LIME_FREETYPE
+		Font *font = (Font*)fontHandle->ptr;
+		return font->GetStrikethroughThickness ();
+		#else
+		return 0;
+		#endif
+
+	}
+
+
 	int lime_font_get_units_per_em (value fontHandle) {
 
 		#ifdef LIME_FREETYPE
@@ -1825,19 +1813,19 @@ namespace lime {
 	}
 
 
-	void lime_haptic_vibrate (int period, int duration, double amplitude) {
+	void lime_haptic_vibrate (int period, int duration) {
 
 		#ifdef IPHONE
-		Haptic::Vibrate (period, duration, amplitude);
+		Haptic::Vibrate (period, duration);
 		#endif
 
 	}
 
 
-	HL_PRIM void HL_NAME(hl_haptic_vibrate) (int period, int duration, double amplitude) {
+	HL_PRIM void HL_NAME(hl_haptic_vibrate) (int period, int duration) {
 
 		#ifdef IPHONE
-		Haptic::Vibrate (period, duration, amplitude);
+		Haptic::Vibrate (period, duration);
 		#endif
 
 	}
@@ -2529,28 +2517,28 @@ namespace lime {
 	}
 
 
-	float lime_key_code_from_scan_code (float scanCode) {
+	int lime_key_code_from_scan_code (int scanCode) {
 
 		return KeyCode::FromScanCode (scanCode);
 
 	}
 
 
-	HL_PRIM float HL_NAME(hl_key_code_from_scan_code) (float scanCode) {
+	HL_PRIM int HL_NAME(hl_key_code_from_scan_code) (int scanCode) {
 
 		return KeyCode::FromScanCode (scanCode);
 
 	}
 
 
-	float lime_key_code_to_scan_code (float keyCode) {
+	int lime_key_code_to_scan_code (int keyCode) {
 
 		return KeyCode::ToScanCode (keyCode);
 
 	}
 
 
-	HL_PRIM float HL_NAME(hl_key_code_to_scan_code) (float keyCode) {
+	HL_PRIM int HL_NAME(hl_key_code_to_scan_code) (int keyCode) {
 
 		return KeyCode::ToScanCode (keyCode);
 
@@ -2687,11 +2675,19 @@ namespace lime {
 	}
 
 
-	void lime_neko_execute (HxString module) {
+	void lime_orientation_event_manager_register (value callback, value eventObject) {
 
-		#ifdef LIME_NEKO
-		NekoVM::Execute (module.c_str ());
-		#endif
+		OrientationEvent::callback = new ValuePointer (callback);
+		OrientationEvent::eventObject = new ValuePointer (eventObject);
+		System::EnableDeviceOrientationChange(true);
+
+	}
+
+
+	HL_PRIM void HL_NAME(hl_orientation_event_manager_register) (vclosure* callback, OrientationEvent* eventObject) {
+
+		OrientationEvent::callback = new ValuePointer (callback);
+		OrientationEvent::eventObject = new ValuePointer ((vobj*)eventObject);
 
 	}
 
@@ -2960,6 +2956,20 @@ namespace lime {
 	}
 
 
+	int lime_system_get_device_orientation () {
+
+		return System::GetDeviceOrientation();
+
+	}
+
+
+	HL_PRIM int HL_NAME(hl_system_get_device_orientation) () {
+
+		return System::GetDeviceOrientation();
+
+	}
+
+
 	int lime_system_get_first_gyroscope_sensor_id () {
 
 		return System::GetFirstGyroscopeSensorId ();
@@ -2974,7 +2984,7 @@ namespace lime {
 	}
 
 
-	int lime_system_get_first_accelerometer_sensor_id() {
+	int lime_system_get_first_accelerometer_sensor_id () {
 
 		return System::GetFirstAccelerometerSensorId ();
 
@@ -3123,7 +3133,7 @@ namespace lime {
 
 	int lime_system_get_windows_console_mode (int handleType) {
 
-		#if defined (HX_WINDOWS) && !defined (HX_WINRT)
+		#if defined (HX_WINDOWS)
 		return System::GetWindowsConsoleMode (handleType);
 		#else
 		return 0;
@@ -3134,7 +3144,7 @@ namespace lime {
 
 	HL_PRIM int HL_NAME(hl_system_get_windows_console_mode) (int handleType) {
 
-		#if defined (HX_WINDOWS) && !defined (HX_WINRT)
+		#if defined (HX_WINDOWS)
 		return System::GetWindowsConsoleMode (handleType);
 		#else
 		return 0;
@@ -3184,18 +3194,6 @@ namespace lime {
 
 	}
 
-	int lime_system_get_display_orientation (int displayIndex) {
-
-		return System::GetDisplayOrientation (displayIndex);
-
-	}
-
-
-	HL_PRIM int HL_NAME(hl_system_get_display_orientation) (int displayIndex) {
-
-		return System::GetDisplayOrientation (displayIndex);
-
-	}
 
 	value lime_system_get_hint (HxString hintKey) {
 
@@ -3247,7 +3245,7 @@ namespace lime {
 
 	bool lime_system_set_windows_console_mode (int handleType, int mode) {
 
-		#if defined (HX_WINDOWS) && !defined (HX_WINRT)
+		#if defined (HX_WINDOWS)
 		return System::SetWindowsConsoleMode (handleType, mode);
 		#else
 		return false;
@@ -3258,7 +3256,7 @@ namespace lime {
 
 	HL_PRIM bool HL_NAME(hl_system_set_windows_console_mode) (int handleType, int mode) {
 
-		#if defined (HX_WINDOWS) && !defined (HX_WINRT)
+		#if defined (HX_WINDOWS)
 		return System::SetWindowsConsoleMode (handleType, mode);
 		#else
 		return false;
@@ -3354,14 +3352,15 @@ namespace lime {
 	bool lime_window_set_vsync_mode (value window, int mode) {
 
 		Window* targetWindow = (Window*)val_data (window);
-		return targetWindow->SetVSyncMode((WindowVSyncMode)mode);
+		return targetWindow->SetVSyncMode (mode);
+
 	}
 
 
 	HL_PRIM bool HL_NAME(hl_window_set_vsync_mode) (HL_CFFIPointer* window, int mode) {
 
 		Window* targetWindow = (Window*)window->ptr;
-		return targetWindow->SetVSyncMode((WindowVSyncMode)mode);
+		return targetWindow->SetVSyncMode (mode);
 
 	}
 
@@ -3396,20 +3395,6 @@ namespace lime {
 	}
 
 
-	value lime_window_context_lock (value window) {
-
-		return (value)((Window*)val_data (window))->ContextLock (true);
-
-	}
-
-
-	HL_PRIM vdynamic* HL_NAME(hl_window_context_lock) (HL_CFFIPointer* window) {
-
-		return (vdynamic*)((Window*)window->ptr)->ContextLock (false);
-
-	}
-
-
 	void lime_window_context_make_current (value window) {
 
 		((Window*)val_data (window))->ContextMakeCurrent ();
@@ -3420,20 +3405,6 @@ namespace lime {
 	HL_PRIM void HL_NAME(hl_window_context_make_current) (HL_CFFIPointer* window) {
 
 		((Window*)window->ptr)->ContextMakeCurrent ();
-
-	}
-
-
-	void lime_window_context_unlock (value window) {
-
-		((Window*)val_data (window))->ContextUnlock ();
-
-	}
-
-
-	HL_PRIM void HL_NAME(hl_window_context_unlock) (HL_CFFIPointer* window) {
-
-		((Window*)window->ptr)->ContextUnlock ();
 
 	}
 
@@ -3514,23 +3485,6 @@ namespace lime {
 
 		Window* targetWindow = (Window*)window->ptr;
 		return (uintptr_t)targetWindow->GetContext ();
-
-	}
-
-
-	value lime_window_get_context_type (value window) {
-
-		Window* targetWindow = (Window*)val_data (window);
-		const char* type = targetWindow->GetContextType ();
-		return type ? alloc_string (type) : alloc_null ();
-
-	}
-
-
-	HL_PRIM vbyte* HL_NAME(hl_window_get_context_type) (HL_CFFIPointer* window) {
-
-		Window* targetWindow = (Window*)window->ptr;
-		return (vbyte*)targetWindow->GetContextType ();
 
 	}
 
@@ -4079,6 +4033,22 @@ namespace lime {
 	}
 
 
+	bool lime_window_set_always_on_top (value window, bool alwaysOnTop) {
+
+		Window* targetWindow = (Window*)val_data (window);
+		return targetWindow->SetAlwaysOnTop(alwaysOnTop);
+
+	}
+
+
+	HL_PRIM bool HL_NAME(hl_window_set_always_on_top) (HL_CFFIPointer* window, bool alwaysOnTop) {
+
+		Window* targetWindow = (Window*)window->ptr;
+		return targetWindow->SetAlwaysOnTop (alwaysOnTop);
+
+	}
+
+
 	void lime_window_warp_mouse (value window, int x, int y) {
 
 		Window* targetWindow = (Window*)val_data (window);
@@ -4192,6 +4162,8 @@ namespace lime {
 	DEFINE_PRIME1 (lime_font_get_num_glyphs);
 	DEFINE_PRIME1 (lime_font_get_underline_position);
 	DEFINE_PRIME1 (lime_font_get_underline_thickness);
+	DEFINE_PRIME1 (lime_font_get_strikethrough_position);
+	DEFINE_PRIME1 (lime_font_get_strikethrough_thickness);
 	DEFINE_PRIME1 (lime_font_get_units_per_em);
 	DEFINE_PRIME1 (lime_font_load);
 	DEFINE_PRIME1 (lime_font_load_bytes);
@@ -4208,7 +4180,7 @@ namespace lime {
 	DEFINE_PRIME4v (lime_gamepad_set_led);
 	DEFINE_PRIME2 (lime_gzip_compress);
 	DEFINE_PRIME2 (lime_gzip_decompress);
-	DEFINE_PRIME3v (lime_haptic_vibrate);
+	DEFINE_PRIME2v (lime_haptic_vibrate);
 	DEFINE_PRIME3v (lime_image_data_util_color_transform);
 	DEFINE_PRIME6v (lime_image_data_util_copy_channel);
 	DEFINE_PRIME7v (lime_image_data_util_copy_pixels);
@@ -4244,7 +4216,7 @@ namespace lime {
 	DEFINE_PRIME2 (lime_lzma_compress);
 	DEFINE_PRIME2 (lime_lzma_decompress);
 	DEFINE_PRIME2v (lime_mouse_event_manager_register);
-	DEFINE_PRIME1v (lime_neko_execute);
+	DEFINE_PRIME2v (lime_orientation_event_manager_register);
 	DEFINE_PRIME3 (lime_png_decode_bytes);
 	DEFINE_PRIME3 (lime_png_decode_file);
 	DEFINE_PRIME2v (lime_render_event_manager_register);
@@ -4255,6 +4227,7 @@ namespace lime {
 	DEFINE_PRIME3 (lime_system_get_directory);
 	DEFINE_PRIME1 (lime_system_get_display);
 	DEFINE_PRIME0 (lime_system_get_num_displays);
+	DEFINE_PRIME0 (lime_system_get_device_orientation);
 	DEFINE_PRIME0 (lime_system_get_first_gyroscope_sensor_id);
 	DEFINE_PRIME0 (lime_system_get_first_accelerometer_sensor_id);
 	DEFINE_PRIME0 (lime_system_get_platform_label);
@@ -4265,7 +4238,6 @@ namespace lime {
 	DEFINE_PRIME1v (lime_system_open_file);
 	DEFINE_PRIME2v (lime_system_open_url);
 	DEFINE_PRIME1 (lime_system_set_allow_screen_timeout);
-	DEFINE_PRIME1 (lime_system_get_display_orientation);
 	DEFINE_PRIME1 (lime_system_get_hint);
 	DEFINE_PRIME2v (lime_system_set_hint);
 	DEFINE_PRIME2 (lime_system_set_windows_console_mode);
@@ -4275,15 +4247,12 @@ namespace lime {
 	DEFINE_PRIME2 (lime_window_set_vsync_mode);
 	DEFINE_PRIME1v (lime_window_close);
 	DEFINE_PRIME1v (lime_window_context_flip);
-	DEFINE_PRIME1 (lime_window_context_lock);
 	DEFINE_PRIME1v (lime_window_context_make_current);
-	DEFINE_PRIME1v (lime_window_context_unlock);
 	DEFINE_PRIME5 (lime_window_create);
 	DEFINE_PRIME2v (lime_window_event_manager_register);
 	DEFINE_PRIME1v (lime_window_focus);
 	DEFINE_PRIME1 (lime_window_get_handle);
 	DEFINE_PRIME1 (lime_window_get_context);
-	DEFINE_PRIME1 (lime_window_get_context_type);
 	DEFINE_PRIME1 (lime_window_get_display);
 	DEFINE_PRIME1 (lime_window_get_display_mode);
 	DEFINE_PRIME1 (lime_window_get_height);
@@ -4312,6 +4281,7 @@ namespace lime {
 	DEFINE_PRIME2v (lime_window_set_text_input_rect);
 	DEFINE_PRIME2 (lime_window_set_title);
 	DEFINE_PRIME2 (lime_window_set_visible);
+	DEFINE_PRIME2 (lime_window_set_always_on_top);
 	DEFINE_PRIME3v (lime_window_warp_mouse);
 	DEFINE_PRIME1 (lime_window_get_opacity);
 	DEFINE_PRIME2v (lime_window_set_opacity);
@@ -4331,6 +4301,7 @@ namespace lime {
 	#define _TJOYSTICK_EVENT _OBJ (_I32 _I32 _I32 _I32 _F64 _F64)
 	#define _TKEY_EVENT _OBJ (_F64 _I32 _I32 _I32 _F64)
 	#define _TMOUSE_EVENT _OBJ (_I32 _F64 _F64 _I32 _I32 _F64 _F64 _I32)
+	#define _TORIENTATION_EVENT _OBJ (_I32 _I32 _I32)
 	#define _TRECTANGLE _OBJ (_F64 _F64 _F64 _F64)
 	#define _TRENDER_EVENT _OBJ (_I32)
 	#define _TSENSOR_EVENT _OBJ (_I32 _F64 _F64 _F64 _I32)
@@ -4342,8 +4313,8 @@ namespace lime {
 
 	#define _TARRAYBUFFER _TBYTES
 	#define _TARRAYBUFFERVIEW _OBJ (_I32 _TARRAYBUFFER _I32 _I32 _I32 _I32)
-	#define _TAUDIOBUFFER _OBJ (_I32 _I32 _TARRAYBUFFERVIEW _I32 _DYN _DYN _DYN _DYN _DYN _TVORBISFILE)
-	#define _TIMAGEBUFFER _OBJ (_I32 _TARRAYBUFFERVIEW _I32 _I32 _BOOL _BOOL _I32 _DYN _DYN _DYN _DYN _DYN _DYN)
+	#define _TAUDIOBUFFER _OBJ (_I32 _I32 _TARRAYBUFFERVIEW _I32 _I32 _DYN _DYN _DYN _DYN _TVORBISFILE)
+	#define _TIMAGEBUFFER _OBJ (_I32 _TARRAYBUFFERVIEW _I32 _I32 _BOOL _BOOL _I32 _DYN _DYN _DYN _DYN _DYN)
 	#define _TIMAGE _OBJ (_TIMAGEBUFFER _BOOL _I32 _I32 _I32 _TRECTANGLE _ENUM _I32 _I32 _F64 _F64)
 
 	#define _TARRAY _OBJ (_BYTES _I32)
@@ -4390,6 +4361,8 @@ namespace lime {
 	DEFINE_HL_PRIM (_I32, hl_font_get_num_glyphs, _TCFFIPOINTER);
 	DEFINE_HL_PRIM (_I32, hl_font_get_underline_position, _TCFFIPOINTER);
 	DEFINE_HL_PRIM (_I32, hl_font_get_underline_thickness, _TCFFIPOINTER);
+	DEFINE_HL_PRIM (_I32, hl_font_get_strikethrough_position, _TCFFIPOINTER);
+	DEFINE_HL_PRIM (_I32, hl_font_get_strikethrough_thickness, _TCFFIPOINTER);
 	DEFINE_HL_PRIM (_I32, hl_font_get_units_per_em, _TCFFIPOINTER);
 	// DEFINE_PRIME1 (lime_font_load);
 	DEFINE_HL_PRIM (_TCFFIPOINTER, hl_font_load_bytes, _TBYTES);
@@ -4406,7 +4379,7 @@ namespace lime {
 	DEFINE_HL_PRIM (_VOID, hl_gamepad_set_led, _I32 _I32 _I32 _I32);
 	DEFINE_HL_PRIM (_TBYTES, hl_gzip_compress, _TBYTES _TBYTES);
 	DEFINE_HL_PRIM (_TBYTES, hl_gzip_decompress, _TBYTES _TBYTES);
-	DEFINE_HL_PRIM (_VOID, hl_haptic_vibrate, _I32 _I32 _F64);
+	DEFINE_HL_PRIM (_VOID, hl_haptic_vibrate, _I32 _I32);
 	DEFINE_HL_PRIM (_VOID, hl_image_data_util_color_transform, _TIMAGE _TRECTANGLE _TARRAYBUFFERVIEW);
 	DEFINE_HL_PRIM (_VOID, hl_image_data_util_copy_channel, _TIMAGE _TIMAGE _TRECTANGLE _TVECTOR2 _I32 _I32);
 	DEFINE_HL_PRIM (_VOID, hl_image_data_util_copy_pixels, _TIMAGE _TIMAGE _TRECTANGLE _TVECTOR2 _TIMAGE _TVECTOR2 _BOOL);
@@ -4435,14 +4408,14 @@ namespace lime {
 	DEFINE_HL_PRIM (_VOID, hl_joystick_set_led, _I32 _I32 _I32 _I32);
 	DEFINE_HL_PRIM (_TIMAGEBUFFER, hl_jpeg_decode_bytes, _TBYTES _BOOL _TIMAGEBUFFER);
 	DEFINE_HL_PRIM (_TIMAGEBUFFER, hl_jpeg_decode_file, _STRING _BOOL _TIMAGEBUFFER);
-	DEFINE_HL_PRIM (_F32, hl_key_code_from_scan_code, _F32);
-	DEFINE_HL_PRIM (_F32, hl_key_code_to_scan_code, _F32);
+	DEFINE_HL_PRIM (_I32, hl_key_code_from_scan_code, _I32);
+	DEFINE_HL_PRIM (_I32, hl_key_code_to_scan_code, _I32);
 	DEFINE_HL_PRIM (_VOID, hl_key_event_manager_register, _FUN (_VOID, _NO_ARG) _TKEY_EVENT);
 	DEFINE_HL_PRIM (_BYTES, hl_locale_get_system_locale, _NO_ARG);
 	DEFINE_HL_PRIM (_TBYTES, hl_lzma_compress, _TBYTES _TBYTES);
 	DEFINE_HL_PRIM (_TBYTES, hl_lzma_decompress, _TBYTES _TBYTES);
 	DEFINE_HL_PRIM (_VOID, hl_mouse_event_manager_register, _FUN (_VOID, _NO_ARG) _TMOUSE_EVENT);
-	// DEFINE_PRIME1v (lime_neko_execute);
+	DEFINE_HL_PRIM (_VOID, hl_orientation_event_manager_register, _FUN (_VOID, _NO_ARG) _TORIENTATION_EVENT);
 	DEFINE_HL_PRIM (_TIMAGEBUFFER, hl_png_decode_bytes, _TBYTES _BOOL _TIMAGEBUFFER);
 	DEFINE_HL_PRIM (_TIMAGEBUFFER, hl_png_decode_file, _STRING _BOOL _TIMAGEBUFFER);
 	DEFINE_HL_PRIM (_VOID, hl_render_event_manager_register, _FUN (_VOID, _NO_ARG) _TRENDER_EVENT);
@@ -4453,6 +4426,7 @@ namespace lime {
 	DEFINE_HL_PRIM (_BYTES, hl_system_get_directory, _I32 _STRING _STRING);
 	DEFINE_HL_PRIM (_DYN, hl_system_get_display, _I32);
 	DEFINE_HL_PRIM (_I32, hl_system_get_num_displays, _NO_ARG);
+	DEFINE_HL_PRIM (_I32, hl_system_get_device_orientation, _NO_ARG);
 	DEFINE_HL_PRIM (_I32, hl_system_get_first_gyroscope_sensor_id, _NO_ARG);
 	DEFINE_HL_PRIM (_I32, hl_system_get_first_accelerometer_sensor_id, _NO_ARG);
 	DEFINE_HL_PRIM (_BYTES, hl_system_get_platform_label, _NO_ARG);
@@ -4463,24 +4437,21 @@ namespace lime {
 	DEFINE_HL_PRIM (_VOID, hl_system_open_file, _STRING);
 	DEFINE_HL_PRIM (_VOID, hl_system_open_url, _STRING _STRING);
 	DEFINE_HL_PRIM (_BOOL, hl_system_set_allow_screen_timeout, _BOOL);
-	DEFINE_HL_PRIM (_I32, hl_system_get_display_orientation, _I32);
 	DEFINE_HL_PRIM (_BYTES, hl_system_get_hint, _STRING);
 	DEFINE_HL_PRIM (_VOID, hl_system_set_hint, _STRING _STRING);
 	DEFINE_HL_PRIM (_BOOL, hl_system_set_windows_console_mode, _I32 _I32);
 	DEFINE_HL_PRIM (_VOID, hl_text_event_manager_register, _FUN (_VOID, _NO_ARG) _TTEXT_EVENT);
 	DEFINE_HL_PRIM (_VOID, hl_touch_event_manager_register, _FUN (_VOID, _NO_ARG) _TTOUCH_EVENT);
 	DEFINE_HL_PRIM (_I32, hl_window_alert, _TCFFIPOINTER _I32 _STRING _STRING _ARR);
+	DEFINE_HL_PRIM (_BOOL, hl_window_set_vsync_mode, _TCFFIPOINTER _I32);
 	DEFINE_HL_PRIM (_VOID, hl_window_close, _TCFFIPOINTER);
 	DEFINE_HL_PRIM (_VOID, hl_window_context_flip, _TCFFIPOINTER);
-	DEFINE_HL_PRIM (_DYN, hl_window_context_lock, _TCFFIPOINTER);
 	DEFINE_HL_PRIM (_VOID, hl_window_context_make_current, _TCFFIPOINTER);
-	DEFINE_HL_PRIM (_VOID, hl_window_context_unlock, _TCFFIPOINTER);
 	DEFINE_HL_PRIM (_TCFFIPOINTER, hl_window_create, _TCFFIPOINTER _I32 _I32 _I32 _STRING);
 	DEFINE_HL_PRIM (_VOID, hl_window_event_manager_register, _FUN (_VOID, _NO_ARG) _TWINDOW_EVENT);
 	DEFINE_HL_PRIM (_VOID, hl_window_focus, _TCFFIPOINTER);
 	DEFINE_HL_PRIM (_F64, hl_window_get_handle, _TCFFIPOINTER);
 	DEFINE_HL_PRIM (_F64, hl_window_get_context, _TCFFIPOINTER);
-	DEFINE_HL_PRIM (_BYTES, hl_window_get_context_type, _TCFFIPOINTER);
 	DEFINE_HL_PRIM (_I32, hl_window_get_display, _TCFFIPOINTER);
 	DEFINE_HL_PRIM (_VOID, hl_window_get_display_mode, _TCFFIPOINTER _TDISPLAYMODE);
 	DEFINE_HL_PRIM (_I32, hl_window_get_height, _TCFFIPOINTER);
@@ -4509,10 +4480,10 @@ namespace lime {
 	DEFINE_HL_PRIM (_VOID, hl_window_set_text_input_rect, _TCFFIPOINTER _TRECTANGLE);
 	DEFINE_HL_PRIM (_STRING, hl_window_set_title, _TCFFIPOINTER _STRING);
 	DEFINE_HL_PRIM (_BOOL, hl_window_set_visible, _TCFFIPOINTER _BOOL);
+	DEFINE_HL_PRIM (_BOOL, hl_window_set_always_on_top, _TCFFIPOINTER _BOOL);
 	DEFINE_HL_PRIM (_VOID, hl_window_warp_mouse, _TCFFIPOINTER _I32 _I32);
 	DEFINE_HL_PRIM (_F64, hl_window_get_opacity, _TCFFIPOINTER);
 	DEFINE_HL_PRIM (_VOID, hl_window_set_opacity, _TCFFIPOINTER _F64);
-	DEFINE_HL_PRIM (_BOOL, hl_window_set_vsync_mode, _TCFFIPOINTER _I32);
 	DEFINE_HL_PRIM (_TBYTES, hl_zlib_compress, _TBYTES _TBYTES);
 	DEFINE_HL_PRIM (_TBYTES, hl_zlib_decompress, _TBYTES _TBYTES);
 

@@ -27,10 +27,19 @@ class Gamepad
 	public var onButtonUpPrecise = new Event<GamepadButton->haxe.Int64->Void>();
 	public var onDisconnect = new Event<Void->Void>();
 
+	#if (js && html5)
+	private var __jsGamepad:js.html.Gamepad;
+	#end
+
 	public function new(id:Int)
 	{
 		this.id = id;
 		connected = true;
+
+		#if (js && html5)
+		var devices = Joystick.__getDeviceData();
+		__jsGamepad = devices[this.id];
+		#end
 	}
 
 	public static function addMappings(mappings:Array<String>):Void
@@ -84,8 +93,7 @@ class Gamepad
 		#if (lime_cffi && !macro)
 		return CFFI.stringValue(NativeCFFI.lime_gamepad_get_device_guid(this.id));
 		#elseif (js && html5)
-		var devices = Joystick.__getDeviceData();
-		return devices[this.id].id;
+		return __jsGamepad.id;
 		#else
 		return null;
 		#end
@@ -96,8 +104,7 @@ class Gamepad
 		#if (lime_cffi && !macro)
 		return CFFI.stringValue(NativeCFFI.lime_gamepad_get_device_name(this.id));
 		#elseif (js && html5)
-		var devices = Joystick.__getDeviceData();
-		return devices[this.id].id;
+		return __jsGamepad.id;
 		#else
 		return null;
 		#end

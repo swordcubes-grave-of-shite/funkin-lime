@@ -8,6 +8,7 @@ import lime.media.openal.ALContext;
 import lime.media.openal.ALDevice;
 import lime.media.openal.ALSource;
 import lime.utils.ArrayBufferView;
+import haxe.io.Bytes;
 
 #if !lime_debug
 @:fileXml('tags="haxe,release"')
@@ -388,7 +389,16 @@ class OpenALAudioContext
 
 	public function getSourcefv(source:ALSource, param:Int, count:Int = 1):Array<Float>
 	{
-		return AL.getSourcefv(source, param);
+		return AL.getSourcefv(source, param, count);
+	}
+
+	public function getSourcedvSOFT(source:ALSource, param:Int, count:Int = 1):Array<Float>
+	{
+		#if lime_openalsoft
+		return AL.getSourcedvSOFT(source, param, count);
+		#else
+		return null;
+		#end
 	}
 
 	public function getSourcei(source:ALSource, param:Int):Dynamic
@@ -411,6 +421,11 @@ class OpenALAudioContext
 		{
 			return ALC.getString(device, param);
 		}
+	}
+
+	public function getStringList(device:ALDevice, param:Int):Array<String>
+	{
+		return ALC.getStringList(device, param);
 	}
 
 	public function isBuffer(buffer:ALBuffer):Bool
@@ -595,19 +610,52 @@ class OpenALAudioContext
 		ALC.suspendContext(context);
 	}
 
+	public function captureOpenDevice(deviceName:String, frequency:Int, format:Int, bufferSize:Int):ALDevice
+	{
+		return ALC.captureOpenDevice(deviceName, frequency, format, bufferSize);
+	}
+
+	public function captureCloseDevice(device:ALDevice):Bool
+	{
+		return ALC.captureCloseDevice(device);
+	}
+
+	public function captureStart(device:ALDevice):Void
+	{
+		ALC.captureStart(device);
+	}
+
+	public function captureStop(device:ALDevice):Void
+	{
+		ALC.captureStop(device);
+	}
+
+	public function captureSamples(device:ALDevice, buffer:Bytes, samples:Int):Void
+	{
+		ALC.captureSamples(device, buffer, samples);
+	}
+
 	public function eventControlSOFT(events:Array<Int>, enable:Bool):Void
 	{
+		#if lime_openalsoft
 		ALC.eventControlSOFT(events, enable);
+		#end
 	}
 
 	public function eventCallbackSOFT(callback:Dynamic):Void
 	{
+		#if lime_openalsoft
 		ALC.eventCallbackSOFT(callback);
+		#end
 	}
 
 	public function reopenDeviceSOFT(device:ALDevice, newDeviceName:String, attributes:Array<Int>):Bool
 	{
+		#if lime_openalsoft
 		return ALC.reopenDeviceSOFT(device, newDeviceName, attributes);
+		#else
+		return false;
+		#end
 	}
 }
 #end

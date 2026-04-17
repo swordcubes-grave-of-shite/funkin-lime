@@ -3,6 +3,7 @@ package lime.app;
 import haxe.Int64;
 import lime.graphics.RenderContext;
 import lime.system.System;
+import lime.system.Orientation;
 import lime.ui.Gamepad;
 import lime.ui.GamepadAxis;
 import lime.ui.GamepadButton;
@@ -23,17 +24,22 @@ import lime.utils.Preloader;
 	to override "on" functions in the class in order to handle standard events
 	that are relevant.
 **/
-@:access(lime.ui.Window)
 #if !lime_debug
 @:fileXml('tags="haxe,release"')
 @:noDebug
 #end
+@:access(lime.ui.Window)
 class Application extends Module
 {
 	/**
 		The current Application instance that is executing
 	**/
 	public static var current(default, null):Application;
+
+	/**
+		The device's orientation.
+	**/
+	public var deviceOrientation(get, never):Orientation;
 
 	/**
 		Meta-data values for the application, such as a version or a package name
@@ -54,6 +60,19 @@ class Application extends Module
 		Dispatched when a new window has been created by this application
 	**/
 	public var onCreateWindow = new Event<Window->Void>();
+
+	/**
+		Dispatched when the orientation of the display has changed.
+	**/
+	public var onDisplayOrientationChange = new Event<Int->Orientation->Void>();
+
+	/**
+		Dispatched when the orientation of the device has changed. Typically,
+		the display and device orientation values are the same. However, if the
+		display orientation is locked to portrait or landscape, the display and
+		device orientations may be different.
+	**/
+	public var onDeviceOrientationChange = new Event<Orientation->Void>();
 
 	/**
 		The Preloader for the current Application
@@ -629,15 +648,12 @@ class Application extends Module
 
 	@:noCompletion private function __checkForAllWindowsClosed():Void
 	{
-		// air handles this automatically with NativeApplication.autoExit
-		#if !air
 		if (__windows.length == 0)
 		{
 			#if !lime_doc_gen
 			System.exit(0);
 			#end
 		}
-		#end
 	}
 
 	@:noCompletion private function __onGamepadConnect(gamepad:Gamepad):Void
@@ -718,13 +734,14 @@ class Application extends Module
 	{
 		return __windows;
 	}
+
+	@:noCompletion private function get_deviceOrientation():Orientation
+	{
+		return __backend.getDeviceOrientation();
+	}
 }
 
-#if air
-@:noCompletion private typedef ApplicationBackend = lime._internal.backend.air.AIRApplication;
-#elseif flash
-@:noCompletion private typedef ApplicationBackend = lime._internal.backend.flash.FlashApplication;
-#elseif (js && html5)
+#if (js && html5)
 @:noCompletion private typedef ApplicationBackend = lime._internal.backend.html5.HTML5Application;
 #else
 @:noCompletion private typedef ApplicationBackend = lime._internal.backend.native.NativeApplication;

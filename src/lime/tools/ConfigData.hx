@@ -107,7 +107,7 @@ abstract ConfigData(Dynamic) to Dynamic from Dynamic
 
 		if (array.length > 0)
 		{
-			var value = [];
+			var value:Array<String> = [];
 
 			if (childField == null)
 			{
@@ -192,7 +192,7 @@ abstract ConfigData(Dynamic) to Dynamic from Dynamic
 			}
 		}
 
-		var pairs = [];
+		var pairs:Array<{ key:String, value:Dynamic }> = [];
 		for (key in Reflect.fields(values))
 		{
 			pairs.push({ key: key, value: Reflect.field(values, key) });
@@ -228,8 +228,8 @@ abstract ConfigData(Dynamic) to Dynamic from Dynamic
 
 			var valueSource = Reflect.field(source, field);
 			var valueDest = Reflect.field(destination, field);
-			var typeSource = Type.typeof(valueSource).getName();
-			var typeDest = Type.typeof(valueDest).getName();
+			var typeSource:String = Type.typeof(valueSource).getName();
+			var typeDest:String = Type.typeof(valueDest).getName();
 
 			// if trying to copy a non object over an object, don't
 			if (typeSource != "TObject" && typeDest == "TObject")
