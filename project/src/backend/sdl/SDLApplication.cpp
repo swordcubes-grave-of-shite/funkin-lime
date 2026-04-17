@@ -38,13 +38,15 @@ namespace lime {
 
 	SDLApplication::SDLApplication () {
 
+		SDL_SetHint (SDL_HINT_JOYSTICK_HIDAPI, "1");
+
 		#ifdef IPHONE
 		SDL_SetHint (SDL_HINT_IOS_HIDE_HOME_INDICATOR, "3");
 		#endif
 
 		Uint32 initFlags = SDL_INIT_VIDEO | SDL_INIT_GAMEPAD | SDL_INIT_JOYSTICK | SDL_INIT_SENSOR;
 
-		#if defined(LIME_MOJOAL) || defined(LIME_OPENALSOFT)
+		#ifdef LIME_OPENALSOFT
 		initFlags |= SDL_INIT_AUDIO;
 		#endif
 
