@@ -142,7 +142,7 @@ namespace lime {
 
 				if (path != nullptr) {
 
-        			wstring_convert converter;
+					wstring_convert converter;
 					result = new std::wstring (converter.from_bytes(path));
 					SDL_free (path);
 
@@ -610,6 +610,7 @@ namespace lime {
 
 	}
 
+
 	int System::GetFirstAccelerometerSensorId () {
 
 		int count = 0;
@@ -677,20 +678,7 @@ namespace lime {
 
 			hintKey = "SDL_" + hintKey;
 
-		if(filePointer != NULL)
-			return filePointer;
-
-		#ifdef ANDROID
-			System::GCEnterBlocking ();
-			int fd;
-			off_t outStart;
-			off_t outLength;
-			fd = AAsset_openFileDescriptor ((AAsset*)SDL_GetPointerProperty(properties, SDL_PROP_IOSTREAM_ANDROID_AASSET_POINTER, NULL), &outStart, &outLength);
-			FILE* file = ::fdopen (fd, "rb");
-			::fseek (file, outStart, 0);
-			System::GCExitBlocking ();
-			return file;
-		#endif
+		}
 
 		const char* raw = SDL_GetHint (hintKey.c_str ());
 
@@ -799,7 +787,7 @@ namespace lime {
 
 		System::GCEnterBlocking ();
 
-	  	size_t nmem = size > 0 && count > 0 ? SDL_ReadIO (stream ? (SDL_IOStream*)stream->handle : NULL, ptr, size * count) / size : 0;
+		size_t nmem = size > 0 && count > 0 ? SDL_ReadIO (stream ? (SDL_IOStream*)stream->handle : NULL, ptr, size * count) / size : 0;
 
 		System::GCExitBlocking ();
 
@@ -838,7 +826,7 @@ namespace lime {
 
 		System::GCEnterBlocking ();
 
-        size_t nmem = size > 0 && count > 0 ? SDL_WriteIO (stream ? (SDL_IOStream*)stream->handle : NULL, ptr, size * count) / size : 0;
+		size_t nmem = size > 0 && count > 0 ? SDL_WriteIO (stream ? (SDL_IOStream*)stream->handle : NULL, ptr, size * count) / size : 0;
 
 		System::GCExitBlocking ();
 
