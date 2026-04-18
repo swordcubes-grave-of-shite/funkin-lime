@@ -224,19 +224,6 @@ class System
 	#end
 
 	/**
-		Returns the display orientation for the specified display.
-	**/
-	public static function getDisplayOrientation(display:Display):DisplayOrientation
-	{
-		#if (lime_cffi && !macro)
-		if (display != null)
-			return NativeCFFI.lime_system_get_display_orientation(display.id);
-		#end
-
-		return DISPLAY_ORIENTATION_UNKNOWN;
-	}
-
-	/**
 		Returns information about the video display with the specified ID.
 	**/
 	public static function getDisplay(id:Int):Display
